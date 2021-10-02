@@ -90,7 +90,7 @@ class QueueReferenceAction extends QueueAction {
 class QueueRepeatInteractAction extends QueueAction {
 	get action(){
 		let presentAction = zones[currentZone].getMapLocation(clones[this.clone].x, clones[this.clone].y).type.presentAction;
-		if (presentAction && presentAction.canStart() > 0){
+		if (presentAction && presentAction.canStart && presentAction.canStart() > 0){
 			return this[0];
 		}
 		return null;
@@ -194,7 +194,6 @@ class ActionQueue extends Array {
 		// Queue reference:        Q\d+;
 		// Pathfind action:        P-?\d+:-?\d+;
 		if (!actionID.match(/^([UDLRI<=]|[NS]\d+;|T|Q\d+;|P-?\d+:-?\d+;)$/)){
-			settings.debug && console.log(`Failed to parse action: ${actionID}`);
 			return;
 		}
 		if (!this[index]){
@@ -492,27 +491,27 @@ function queueToStringStripped(queue) {
 }
 
 function exportQueues() {
-	let exportString = queues.map(queue => queueToString(queue));
+	let exportString = zones[displayZone].queues.map(queue => queueToString(queue));
 	navigator.clipboard.writeText(JSON.stringify(exportString));
 }
 
 function importQueues() {
 	let queueString = prompt("输入您的队列");
-	let tempQueues = queues.slice();
+	let tempQueues = zones[displayZone].queues.slice();
 	try {
 		let newQueues = JSON.parse(queueString);
-		if (newQueues.length > queues.length) {
+		if (newQueues.length > zones[displayZone].queues.length) {
 			alert("无法导入队列 - 队列过多。")
 			return;
 		}
-		queues.map(e => e.clear());
+		zones[displayZone].queues.map(e => e.clear());
 		for (let i = 0; i < newQueues.length; i++) {
-			queues[i].fromString(newQueues[i]);
+			zones[displayZone].queues[i].fromString(newQueues[i]);
 		}
 		redrawQueues();
 	} catch {
-		alert("无法导入队列。");
-		queues = tempQueues;
+		alert("无法导入队列");
+		zones[displayZone].queues = tempQueues;
 	}
 }
 

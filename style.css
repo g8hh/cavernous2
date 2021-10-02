@@ -56,6 +56,7 @@ body {
 
 .stat .description {
 	white-space: initial;
+	top: 18px;
 }
 
 .option {
@@ -89,6 +90,29 @@ body {
 
 .option.double-height {
 	height: 40px;
+}
+
+#grind-option .description {
+	min-width: 180px;
+	width: unset;
+}
+
+#grind-stats-table td {
+	text-align: right;
+	padding-right: 3px;
+}
+
+#grind-stats-header,
+#grind-stats-footer {
+	font-weight: bold;
+}
+
+#grind-stats-header td {
+	padding: 0 3px;
+}
+
+td.failed {
+	color: #ff0000;
 }
 
 .action {
@@ -413,7 +437,7 @@ h4#location-name {
 
 .zone .mana {
 	color: #0000ff;
-	width: 40px;
+	width: 50px;
 	display: inline-block;
 }
 
@@ -422,10 +446,10 @@ h4#location-name {
 	position: absolute;
 	margin-top: -2px;
 	left: 5px;
-	width: 300px;
+	min-width: 200px;
 	background: #99bbbb;
 	border: 1px solid #00000033;
-	z-index: 5;
+	z-index: 50;
 	padding: 2px;
 	color: #000000;
 	cursor: default;
@@ -450,10 +474,15 @@ h4#location-name {
 .routes .require,
 .routes .stuff {
 	display: inline-block;
+	width: unset;
 }
 
 .routes .active {
-	background-color: #88aa88;
+	background-color: #88cc88;
+}
+
+.routes .unused {
+	background-color: #9999cc;
 }
 
 #failed-route {
@@ -462,10 +491,20 @@ h4#location-name {
 	font-weight: bold;
 }
 
+#dead-route {
+	display: none;
+	color: red;
+	font-weight: bold;
+}
+
+#delete-route-button {
+	background-color: #ff000033;
+	border-color: #ff000033;
+}
+
 .delete-route {
 	border-radius: 25%;
-	position: absolute;
-	right: 0px;
+	float: right;
 	width: 14px;
 	text-align: center;
 }
@@ -555,6 +594,10 @@ td.granite {
 	background-color: #795039;
 }
 
+td.basalt {
+	background-color: #2b251d;
+}
+
 td.mushroom {
 	background-color: #135513;
 }
@@ -565,6 +608,10 @@ td.kudzushroom {
 
 td.sporeshroom {
 	background-color: #32805c;
+}
+
+td.oystershroom {
+	background-color: #1e573c;
 }
 
 td.gold {
@@ -631,6 +678,7 @@ td.fountain:before {
 
 td.bridge,
 td.bridge2,
+td.bridge3,
 td.sword,
 td.sword2,
 td.shield,
@@ -644,7 +692,8 @@ td.hammer {
 }
 
 td.bridge:before,
-td.bridge2:before {
+td.bridge2:before,
+td.bridge3:before {
 	content: "⎶";
 }
 
@@ -725,8 +774,12 @@ td.rune-wither:before {
 	content: "H";
 }
 
-td.rune-to:before {
+td.rune-to:before,
+td.rune-to-charged:before {
 	content: "T";
+}
+td.rune-to-charged {
+	background-color: #c9ff68
 }
 
 td.rune-from:before {
@@ -749,24 +802,19 @@ td.goblin {
 	background-color: #ff0000;
 }
 
-td.hobgoblin {
+td.skeleton {
 	background-color: #cc0000;
 }
 
-td.champion {
-	background-color: #550000;
-}
-
 td.chieftain:before,
-td.hobgoblin:before,
-td.champion:before,
 td.goblin:before {
 	content: "웃";
 	font-size: 0.91666em;
 }
 
-td.hobgoblin:before {
-	text-shadow: 0 0 1px;
+td.skeleton:before{
+	color: #ffffff;
+	content: "웃";
 }
 
 .enemy-hp {

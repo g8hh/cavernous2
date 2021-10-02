@@ -58,11 +58,19 @@ function writeNumber(value, decimals = 0) {
 	return value.toFixed(decimals);
 }
 
+function writeTime(value) {
+	if (value == Infinity) return "Infinity";
+	let hours = Math.floor(value / 3600);
+	let minutes = Math.floor((value % 3600) / 60);
+	let seconds = Math.floor((value % 60) * 10) / 10;
+	return `${hours ? `${hours}:` : ""}${minutes ? (minutes > 9 ? `${minutes}:` : `0${minutes}:`) : ""}${seconds < 10 && minutes ? `0${seconds}` : seconds}`;
+}
+
 let timeBankNode;
 
 function redrawOptions() {
 	timeBankNode = timeBankNode || document.querySelector("#time-banked");
-	timeBankNode.innerText = writeNumber(timeBanked / 1000, 1);
+	timeBankNode.innerText = writeTime(timeBanked / 1000);
 }
 
 window.ondrop = e => e.preventDefault();
@@ -179,7 +187,10 @@ function save(){
 		"timeBanked": timeBanked,
 	}
 	let messageData = messages.map(m => [m.name, m.displayed]);
-	//let savedRoutes = routes.map(r => [r.x, r.y, r.totalTimeAvailable, r.route])
+	let savedRoutes = JSON.stringify(routes, ((key, value) => {
+		if (key == "usedRoutes") return undefined;
+		return value;
+	}));
 	saveString = JSON.stringify({
 		version,
 		playerStats,
@@ -190,7 +201,7 @@ function save(){
 		time,
 		messageData,
 		settings,
-		routes,
+		savedRoutes,
 	});
 	localStorage[saveName] = btoa(saveString);
 }
@@ -198,6 +209,7 @@ function save(){
 function load(){
 	if (!localStorage[saveName]) return setup();
 	let saveGame = JSON.parse(atob(localStorage[saveName]));
+	if (!saveGame.routes) saveGame.routes = JSON.parse(saveGame.savedRoutes);
 	previousVersion = saveGame.version || 2;
 	if (version < previousVersion) {
 		alert(`错误：版本号减少！\n${previousVersion} -> ${version}`);
@@ -222,11 +234,13 @@ function load(){
 		}
 		zone.queues = ActionQueue.fromJSON(saveGame.zoneData[i].queues);
 		zone.routes = ZoneRoute.fromJSON(saveGame.zoneData[i].routes);
-		if (saveGame.zoneData[i].locations.length) zone.display();
 		// Challenge for < 2.0.6
 		if (saveGame.zoneData[i].goal || saveGame.zoneData[i].challenge) zone.completeGoal();
 	}
-	recalculateMana();
+	for (let i = 0; i < realms.length; i++){
+		currentRealm = i;
+		recalculateMana();
+	}
 	clones = [];
 	while (clones.length < saveGame.cloneData.count){
 		Clone.addNewClone(true);
@@ -317,8 +331,13 @@ let queuesNode;
 let queueTimeNode;
 let currentClone = 0;
 let fps = 60;
+let shouldReset = false;
 
 setInterval(function mainLoop() {
+	if (shouldReset){
+		resetLoop();
+		shouldReset = false;
+	}
 	let time = Date.now() - lastAction;
 	let mana = getStat("Mana");
 	if (isNaN(mana.current) && settings.running) toggleRunning();
@@ -370,6 +389,7 @@ setInterval(function mainLoop() {
 
 	if (timeUsed > time && !isNaN(timeUsed - time)) {
 		timeBanked -= timeUsed - time;
+		if (timeBanked <= 0) timeBanked = 0;
 	} else if (!isNaN((time - timeUsed) / 2)){
 		timeBanked += (time - timeUsed) / 2;
 	}
@@ -393,7 +413,7 @@ function setup(){
 	drawMap();
 	getMessage("Welcome to Cavernous!").display();
 	if (URLParams.has('timeless')) {
-		timeBanked = 1e9;
+		timeBanked = Infinity;
 		settings.debug_speedMultiplier = 50;
 	}
 }
@@ -564,7 +584,7 @@ setTimeout(() => {
 	}
 	document.body.onkeydown = e => {
 		if (!document.querySelector("input:focus")) {
-			let key = `${e.ctrlKey ? '^' : ''}${e.shiftKey ? '>' : ''}${e.code}`;
+			let key = `${e.ctrlKey || e.metaKey ? '^' : ''}${e.shiftKey ? '>' : ''}${e.code}`;
 			if (keyFunctions[key]){
 				e.preventDefault();
 				keyFunctions[key](e);

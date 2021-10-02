@@ -11,6 +11,7 @@ class Clone {
 		this.walkTime = 0;
 		this.startDamage = this.damage;
 		this.minHealth = 0;
+		this.waiting = false;
 	}
 
 	reset() {
@@ -45,6 +46,12 @@ class Clone {
 		if (this.damage >= getStat("Health").current){
 			this.damage = Infinity;
 			getMessage("Death").display();
+			if (clones.every(c => c.damage == Infinity && c.x == this.x && c.y == this.y)){
+				let route = getBestRoute(this.x, this.y, currentZone);
+				if (route){
+					route.allDead = true;
+				}
+			}
 		}
 		this.styleDamage();
 	}
@@ -108,7 +115,7 @@ class Clone {
 
 	drown(time) {
 		let location = zones[currentZone].getMapLocation(this.x, this.y, true);
-		this.takeDamage(location.water ** 2 * (-time) / 1000);
+		this.takeDamage(location.water ** 2 * time / 1000);
 	}
 
 	executeAction(time, action, actionIndex) {
@@ -187,7 +194,8 @@ class Clone {
 				return 0;
 			}
 		}
-		var [time, percentRemaining] = location.tick(time);
+		let percentRemaining;
+		[time, percentRemaining] = location.tick(time);
 		this.selectQueueAction(actionIndex, 100 - (percentRemaining * 100));
 		this.currentProgress = location.remainingPresent;
 		if (!percentRemaining){
@@ -211,7 +219,7 @@ class Clone {
 			let startTime = time;
 			time = this.executeAction(time, nextAction, actionIndex);
 			this.sustainSpells(startTime - time);
-			this.drown(time);
+			this.drown(startTime - time);
 			this.timeAvailable = time;
 			return time;
 		} 
@@ -229,12 +237,14 @@ class Clone {
 				}
 				this.selectQueueAction(i, 0);
 			}
+			this.drown(this.timeAvailable - time);
 			this.timeAvailable = time;
 			return time;
 		}
 	
 		this.timeLeft = time;
 		this.noActionsAvailable = true;
+		this.drown(this.timeAvailable);
 		this.timeAvailable = 0;
 		return 0;
 	}

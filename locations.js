@@ -3,7 +3,7 @@ class Location {
 		this.x = x;
 		this.y = y;
 		this.zone = zone;
-		this.type = getLocationType(type);
+		this.baseType = getLocationType(type);
 		let creature = getCreature(type);
 		if (creature) {
 			this.creature = new Creature(creature, x, y);
@@ -24,6 +24,14 @@ class Location {
 	get priorCompletions() {
 		return this.priorCompletionData[currentRealm];
 	}
+
+	get type() {
+		if (currentRealm != 2) return this.baseType;
+		if (verdantMapping[this.baseType.symbol]){
+			return getLocationType(getLocationTypeBySymbol(verdantMapping[this.baseType.symbol]));
+		}
+		return this.baseType;
+	}
 	
 	start() {
 		if (clones[currentClone].x == this.x && clones[currentClone].y == this.y){
@@ -40,8 +48,10 @@ class Location {
 		let enterAction = this.type.getEnterAction(this.entered);
 		if (!enterAction) return false;
 		clones[currentClone].walkTime = 0;
-		this.remainingEnter = enterAction.start() - this.wither;
-		this.remainingEnter = Math.max(Object.create(getAction("Walk")).start(), this.remainingEnter);
+		this.remainingEnter = enterAction.start();
+		if (this.remainingEnter !== -1){
+			this.remainingEnter = Math.max(Object.create(getAction("Walk")).start(), this.remainingEnter - this.wither);
+		}
 		this.enterDuration = this.remainingEnter;
 		return this.remainingEnter;
 	}
@@ -65,6 +75,8 @@ class Location {
 				}
 			}
 			percent = this.remainingPresent / (this.presentDuration || 1);
+			// Don't pass back effective time.
+			usedTime *= skillDiv;
 		} else {
 			if (["Walk", "Kudzu Chop"].includes(this.type.getEnterAction(this.entered).name)){
 				if (!clones[currentClone].walkTime){
@@ -93,6 +105,8 @@ class Location {
 			}
 			percent = this.remainingEnter / (this.enterDuration || 1);
 			if (["Walk", "Kudzu Chop"].includes(this.type.getEnterAction(this.entered).name)) this.remainingEnter = baseWalkLength();
+			// Don't pass back effective time.
+			usedTime *= skillDiv;
 		}
 		return [time - usedTime, percent];
 	}
@@ -119,8 +133,8 @@ class Location {
 		zones[currentZone].getAdjLocations(this.x, this.y).forEach(([tile, loc]) => {
 			if (!walkable.includes(tile)) return;
 			let prev_level = Math.floor(loc.water * 10);
-			// 1 water should add 0.025 water per second to each adjacent location.
-			loc.water = Math.min(1, loc.water + (this.water / 200) ** 2 * time);
+			// 1 water should add 0.04 water per second to each adjacent location.
+			loc.water = Math.min(1, loc.water + (this.water / 158) ** 2 * time);
 			if (prev_level != Math.floor(loc.water * 10)){
 				mapDirt.push([loc.x + zones[currentZone].xOffset, loc.y + zones[currentZone].yOffset]);
 			}

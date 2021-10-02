@@ -6,7 +6,7 @@ const classMapping = {
 	"#": ["limestone", "Limestone"], // Mohs 3
 	"«": ["travertine", "Travertine"], // Mohs 6
 	"╖": ["granite", "Granite"], // Mohs 5
-	"???": ["basalt", "Basalt"], // Mohs 6, unused
+	"╣": ["basalt", "Basalt"], // Mohs 6
 	"????": ["chert", "Chert"], // Mohs 7, unused
 	"♥": ["clone-machine", "Strange Machine"],
 	"+": ["gold", "Gold Ore"],
@@ -17,6 +17,7 @@ const classMapping = {
 	"=": ["vaporizer", "Vaporizer"],
 	"⎶": ["bridge", "Anvil - Bridge"],
 	"&": ["bridge2", "Anvil - Upgrade Bridge"],
+	"║": ["bridge3", "Anvil - Long Bridge"],
 	" ": ["pit", "Bottomless Pit"],
 	"~": ["lava", "Bottomless Lava"],
 	'"': ["book", "Book"],
@@ -30,19 +31,20 @@ const classMapping = {
 	"W": ["rune-weak", "Weaken Rune"],
 	"H": ["rune-wither", "Wither Rune"],
 	"T": ["rune-to", "Teleport To Rune"],
+	"t": ["rune-to-charged", "Teleport To Rune"],
 	"F": ["rune-from", "Teleport From Rune"],
 	"D": ["rune-dup", "Duplication Rune"],
 	"d": ["rune-dup-charged", "Duplication Rune"],
 	"○": ["coal", "Coal"],
 	"g": ["goblin", "Goblin"],
 	"c": ["chieftain", "Goblin Chieftain"],
-	"h": ["hobgoblin", "Hobgoblin"],
-	"m": ["champion", "Goblin Champion"],
+	"s": ["skeleton", "Skeleton"],
 	"Θ": ["zone", "Zone Portal"],
 	"√": ["goal", "Goal"],
 	"♠": ["mushroom", "Mushroom"],
 	"♣": ["kudzushroom", "Kudzushroom"],
 	"α": ["sporeshroom", "Sporeshroom"],
+	"§": ["oystershroom", "Oystershroom"],
 	"¢": ["axe", "Anvil - Axe"],
 	"¥": ["pick", "Anvil - Pick"],
 	"£": ["hammer", "Anvil - Hammer"],
@@ -50,7 +52,7 @@ const classMapping = {
 };
 
 // The tiles that can be pathfinded through.
-const walkable = "*.♥╬▣=⎶&\"()[]{}^WHTFDd¢¥£";
+const walkable = "*.♥╬▣=⎶&║\"()[]{}^WHTFDd¢¥£";
 
 let mapDirt = [];
 let mapStain = [];
@@ -92,7 +94,7 @@ function drawNewMap() {
 					for (let i = 0; i < className.length; i++){
 						cellNode.classList.add(className[i]);
 					}
-					cellNode.setAttribute("data-content", descriptorMod ? descriptorMod(descriptor, x, y) : descriptor);
+					cellNode.setAttribute("data-content", descriptorMod ? cnItem(descriptorMod(descriptor, x, y)) : cnItem(descriptor));
 					if (location.water > 0.1) {
 						cell.classList.add(`watery-${Math.floor(location.water * 10)}`);
 					}
@@ -121,7 +123,7 @@ function drawCell(x, y) {
 	if (location.water > 0.1) {
 		cell.classList.add(`watery-${Math.floor(location.water * 10)}`);
 	}
-	cell.setAttribute("data-content", descriptorMod ? descriptorMod(descriptor, x, y) : descriptor);
+	cell.setAttribute("data-content", descriptorMod ? cnItem(descriptorMod(descriptor, x, y)) : cnItem(descriptor));
 }
 
 let mapNode;
@@ -180,7 +182,6 @@ function clampMap() {
 	}
 
 	let size = Math.max(xMax - xMin + 1, yMax - yMin + 1);
-	size = yMax - yMin + 1;
 	let scale = Math.floor(440 / size);
 	mapNode.style.setProperty("--cell-count", size + "px");
 	mapNode.style.setProperty("--cell-size", scale + "px");
@@ -202,11 +203,12 @@ function setMined(x, y, icon){
 		"g": ".",
 		"○": ".",
 		"c": ".",
-		"h": ".",
-		"m": ".",
+		"§": ".",
+		"s": ".",
 		"√": ".",
 		"░": ".",
 		"╖": ".",
+		"╣": ".",
 	}[old] || old;
 	zones[currentZone].map[y] = zones[currentZone].map[y].slice(0, x) + tile + zones[currentZone].map[y].slice(x + 1);
 	if (tile !== old) {
@@ -233,7 +235,7 @@ function viewCell(e){
 				if (type.nextCost){
 					document.querySelector("#location-next").innerHTML = `Next: ${type.nextCost(location.completions, location.priorCompletions, location.zone, x - zones[displayZone].xOffset, y - zones[displayZone].yOffset)}`;
 				} else if (primaryAction) {
-					document.querySelector("#location-next").innerHTML = `Time: ${writeNumber(primaryAction.getProjectedDuration() / 1000, 2)}s`;
+					document.querySelector("#location-next").innerHTML = `Time: ${writeNumber((primaryAction.getProjectedDuration(1, location.wither)) / 1000, 2)}s`;
 				} else {
 					document.querySelector("#location-next").innerHTML = "";
 				}

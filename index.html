@@ -63,8 +63,10 @@
 		</div>
 		<table>
 			<tr id="row-template"></tr>
+			<tr id="grind-row-template"></tr>
 			<tr>
 				<td id="cell-template"></td>
+				<td id="grind-cell-template"></td>
 			</tr>
 		</table>
 		<div id="queue-template" class="bottom-block" onclick="selectClone(this, event)" ondrop="savedQueueDrop(event, this)" ondragover="queueDragOver(event)">
@@ -118,7 +120,7 @@
 				<div class="option block clickable" onclick="toggleBankedTime()">
 					<span id="time-banked-toggle">Using</span> Time (B)
 					<span id="time-banked">0</span>
-					<div class="description">If you're offline or your computer runs slowly, time is banked (at 50% efficiency) - you can use it to speed up the game!</div>
+					<div class="description">If you're offline or your computer runs slowly, time is banked (at 100% efficiency) - you can use it to speed up the game!</div>
 				</div>
 				<div class="option block clickable" onclick="toggleRunning()">
 					<span id="running-toggle">Running</span> (P)
@@ -132,11 +134,17 @@
 					<span class="name">Travel back in time (R)</span>
 					<div class="description">Return to your little room.</div>
 				</div>
-				<div class="option block clickable" onclick="toggleGrindMana()" ondblclick="Route.invalidateRouteCosts()">
+				<div id="grind-option" class="option block clickable" onclick="toggleGrindMana()" ondblclick="Route.invalidateRouteCosts()" onmouseover="updateGrindStats()">
 					<span id="grind-mana-toggle">Not grinding mana rocks</span> (G)
 					<div class="description">
 						Loops through your best paths to each mana rock.<br>
-						Double click to revisit all known mana rocks.
+						Double click to revisit all known mana rocks.<br>
+						<b>Expected completions:</b>
+						<table id="grind-stats-table">
+							<tr id="grind-stats-header"></tr>
+							<tbody id="grind-stats"></tbody>
+							<tr id="grind-stats-footer"></tr>
+						</table>
 					</div>
 				</div>
 				<div class="option block clickable" onclick="toggleLoadPrereqs()">
@@ -144,6 +152,10 @@
 					<div class="description">Adjust what happens when clicking on a zone route.</div>
 				</div>
 				<h4 class="option-separator">Config</h4>
+				<div class="option block clickable" onclick="findUsedZoneRoutes(true)">
+					<span class="name">Check zone route usage</span>
+					<div class="description">For performance reasons, the blue shading on unused zone routes may not update frequently; this forces an update.</div>
+				</div>
 				<div class="option block clickable" onclick="viewMessages()">
 					<span class="name">View messages</span>
 					<div class="description">Reminisce about the 'story'.</div>
@@ -201,7 +213,7 @@
 			<div class="version" title="By Nucaranlaeg"><!--Some code contributed by Dimava and Gnomez-->
 				<a href="https://paypal.me/SamBenner" target="_blank">Support Development</a>
 				<a href="https://discord.gg/EXAHXBr" target="_blank">Discord</a><br>
-				Version <span id="version">2.0.8</span><br>
+				Version <span id="version">2.1.5</span><br>
 				©2021
 			</div>
 		</div>
@@ -260,6 +272,10 @@
 				<div id="failed-route">
 					There is no known valid route to this location - check your prerequisites!
 				</div>
+				<div id="dead-route">
+					This route ends with all your clones dead!
+				</div>
+				<button id="delete-route-button">Forget this route</button>
 			</div>
 			<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 			<div class="bottom-vertical-block">

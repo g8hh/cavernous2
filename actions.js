@@ -36,19 +36,20 @@ class Action {
 		return duration;
 	}
 
-	getBaseDuration() {
+	getBaseDuration(realm = null) {
 		let duration = (typeof(this.baseDuration) == "function" ? this.baseDuration() : this.baseDuration) / 1000;
 		for (let i = 0; i < this.stats.length; i++) {
 			duration *= Math.pow(this.stats[i][0].baseValue, this.stats[i][1]);
 		}
-		if (currentRealm == 1){
+		if ((realm !== null ? realm : currentRealm) == 1){
 			duration *= 3;
 		}
 		return duration;
 	}
 
-	getProjectedDuration(durationMult = 1){
+	getProjectedDuration(durationMult = 1, applyWither = 0){
 		let duration = (typeof(this.baseDuration) == "function" ? this.baseDuration() : this.baseDuration) * durationMult;
+		duration -= applyWither;
 		duration *= this.getSkillDiv();
 		duration *= this.specialDuration();
 		if (currentRealm == 1){
@@ -87,6 +88,7 @@ function completeMove(x, y){
 
 function startWalk(noSetWalkTime){
 	if (!clones[currentClone].walkTime && !noSetWalkTime) clones[currentClone].walkTime = this.getDuration();
+	return 1;
 }
 
 function tickWalk(time){
@@ -133,6 +135,7 @@ function completeCollectMana(x, y) {
 	Route.updateBestRoute(location);
 	zones[currentZone].mineComplete();
 	setMined(x, y, ".");
+	if (settings.autoRestart == 1 && settings.grindMana) shouldReset = true;
 }
 
 function tickCollectMana() {
@@ -146,8 +149,8 @@ function longZoneCompletionMult(x, y, z) {
 	return 0.99 ** (zones[z].getMapLocation(x, y).priorCompletionData[1] ** 0.75);
 }
 
-function mineManaRockCost(completions, priorCompletions, zone, x, y) {
-	return completions ? 0 : Math.pow(1 + (0.1 + 0.05 * (zone.index + currentRealm)) * longZoneCompletionMult(x, y, zone.index), priorCompletions);
+function mineManaRockCost(completions, priorCompletions, zone, x, y, realm = null) {
+	return completions ? 0 : Math.pow(1 + (0.1 + 0.05 * (zone.index + (realm == null ? currentRealm : realm))) * longZoneCompletionMult(x, y, zone.index), priorCompletions);
 }
 
 function startCollectMana(completions, priorCompletions, x, y) {
@@ -283,9 +286,6 @@ function combatDuration(){
 function completeFight(x, y, creature){
 	let attack = getStat("Attack").current;
 	if (creature.health){
-		if (creature.defense >= attack && creature.attack <= getStat("Defense").current){
-			creature.health = Math.max(creature.health - 1, 0);
-		}
 		creature.health = Math.max(creature.health - (Math.max(attack - creature.defense, 0) * (clones[currentClone].activeSpells.find(spell => spell.name == "Mystic Blade") ? 2 : 1)), 0);
 		creature.drawHealth();
 	}
@@ -311,7 +311,7 @@ function completeHeal(){
 function startTeleport(){
 	for (let y = 0; y < zones[currentZone].map.length; y++){
 		for (let x = 0; x < zones[currentZone].map[y].length; x++){
-			if (zones[currentZone].map[y][x] == "T"){
+			if (zones[currentZone].map[y][x] == "t"){
 				return 1;
 			}
 		}
@@ -322,7 +322,7 @@ function startTeleport(){
 function completeTeleport(){
 	for (let y = 0; y < zones[currentZone].map.length; y++){
 		for (let x = 0; x < zones[currentZone].map[y].length; x++){
-			if (zones[currentZone].map[y][x] == "T"){
+			if (zones[currentZone].map[y][x] == "t"){
 				clones[currentClone].x = x - zones[currentZone].xOffset;
 				clones[currentClone].y = y - zones[currentZone].yOffset;
 			}
@@ -338,7 +338,7 @@ function startChargeDuplicate(completions){
 	for (let y = 0; y < zones[currentZone].map.length; y++){
 		runes += zones[currentZone].map[y].split(/[dD]/).length - 1;
 	}
-	return runes;
+	return 2 ** (runes - 1);
 }
 
 function completeChargeRune(x, y){
@@ -349,10 +349,10 @@ function tickWither(usedTime, {x, y}){
 	x += zones[currentZone].xOffset;
 	y += zones[currentZone].yOffset;
 	let adjacentPlants = [
-		"♣♠".includes(zones[currentZone].map[y-1][x]) ? zones[currentZone].mapLocations[y-1][x] : null,
-		"♣♠".includes(zones[currentZone].map[y][x-1]) ? zones[currentZone].mapLocations[y][x-1] : null,
-		"♣♠".includes(zones[currentZone].map[y+1][x]) ? zones[currentZone].mapLocations[y+1][x] : null,
-		"♣♠".includes(zones[currentZone].map[y][x+1]) ? zones[currentZone].mapLocations[y][x+1] : null,
+		"♣♠α§".includes(zones[currentZone].map[y-1][x]) ? zones[currentZone].mapLocations[y-1][x] : null,
+		"♣♠α§".includes(zones[currentZone].map[y][x-1]) ? zones[currentZone].mapLocations[y][x-1] : null,
+		"♣♠α§".includes(zones[currentZone].map[y+1][x]) ? zones[currentZone].mapLocations[y+1][x] : null,
+		"♣♠α§".includes(zones[currentZone].map[y][x+1]) ? zones[currentZone].mapLocations[y][x+1] : null,
 	].filter(p=>p);
 	adjacentPlants.forEach(loc => {
 		loc.wither += usedTime;
@@ -368,10 +368,10 @@ function completeWither(x, y){
 	x += zones[currentZone].xOffset;
 	y += zones[currentZone].yOffset;
 	let adjacentPlants = [
-		"♣♠".includes(zones[currentZone].map[y-1][x]) ? zones[currentZone].mapLocations[y-1][x] : null,
-		"♣♠".includes(zones[currentZone].map[y][x-1]) ? zones[currentZone].mapLocations[y][x-1] : null,
-		"♣♠".includes(zones[currentZone].map[y+1][x]) ? zones[currentZone].mapLocations[y+1][x] : null,
-		"♣♠".includes(zones[currentZone].map[y][x+1]) ? zones[currentZone].mapLocations[y][x+1] : null,
+		"♣♠α§".includes(zones[currentZone].map[y-1][x]) ? zones[currentZone].mapLocations[y-1][x] : null,
+		"♣♠α§".includes(zones[currentZone].map[y][x-1]) ? zones[currentZone].mapLocations[y][x-1] : null,
+		"♣♠α§".includes(zones[currentZone].map[y+1][x]) ? zones[currentZone].mapLocations[y+1][x] : null,
+		"♣♠α§".includes(zones[currentZone].map[y][x+1]) ? zones[currentZone].mapLocations[y][x+1] : null,
 	].filter(p=>p);
 	if (!adjacentPlants.length) return false;
 	return true;
@@ -399,6 +399,7 @@ let actions = [
 	new Action("Mine", 1000, [["Mining", 1], ["Speed", 0.2]], completeMove),
 	new Action("Mine Travertine", 10000, [["Mining", 1], ["Speed", 0.2]], completeMove),
 	new Action("Mine Granite", 350000, [["Mining", 1], ["Speed", 0.2]], completeMove),
+	new Action("Mine Basalt", 4000000, [["Mining", 1], ["Speed", 0.2]], completeMove),
 	new Action("Mine Gold", 1000, [["Mining", 1], ["Speed", 0.2]], completeGoldMine),
 	new Action("Mine Iron", 2500, [["Mining", 2]], completeIronMine),
 	new Action("Mine Coal", 5000, [["Mining", 2]], completeCoalMine),
@@ -411,6 +412,7 @@ let actions = [
 	new Action("Cross Pit", 3000, [["Smithing", 1], ["Speed", 0.3]], completeCrossPit, haveBridge),
 	new Action("Cross Lava", 6000, [["Smithing", 1], ["Speed", 0.3]], completeCrossLava, haveBridge),
 	new Action("Create Bridge", 5000, [["Smithing", 1]], simpleConvert([["Iron Bar", 2]], [["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
+	new Action("Create Long Bridge", 50000, [["Smithing", 1]], simpleConvert([["Iron Bar", 2]], [["Iron Bridge", 1]]), simpleRequire([["Iron Bar", 2]])),
 	new Action("Upgrade Bridge", 12500, [["Smithing", 1]], simpleConvert([["Steel Bar", 1], ["Iron Bridge", 1]], [["Steel Bridge", 1]]), simpleRequire([["Steel Bar", 1], ["Iron Bridge", 1]])),
 	new Action("Read", 10000, [["Runic Lore", 2]], null),
 	new Action("Create Sword", 7500, [["Smithing", 1]], simpleConvert([["Iron Bar", 3]], [["Iron Sword", 1]]), canMakeEquip([["Iron Bar", 3]], "Sword")),
@@ -420,15 +422,17 @@ let actions = [
 	new Action("Create Armour", 10000, [["Smithing", 1]], simpleConvert([["Iron Bar", 4]], [["Iron Armour", 1]]), canMakeEquip([["Iron Bar", 4]], "Armour")),
 	new Action("Upgrade Armour", 25000, [["Smithing", 1]], simpleConvert([["Steel Bar", 2], ["Iron Armour", 1]], [["Steel Armour", 1]]), simpleRequire([["Steel Bar", 2], ["Iron Armour", 1]])),
 	new Action("Attack Creature", 1000, [["Combat", 1]], completeFight, null, tickFight, combatDuration),
-	new Action("Teleport", 1000, [["Runic Lore", 1]], completeTeleport, startTeleport),
+	new Action("Teleport", 100, [["Runic Lore", 1]], completeTeleport, startTeleport),
 	new Action("Charge Duplication", 50000, [["Runic Lore", 1]], completeChargeRune, startChargeDuplicate),
 	new Action("Charge Wither", 100, [["Runic Lore", 1]], completeWither, null, tickWither),
+	new Action("Charge Teleport", 50000, [["Runic Lore", 1]], completeChargeRune),
 	new Action("Heal", 100, [["Runic Lore", 1]], completeHeal, null, tickHeal),
 	new Action("Portal", 1, [["Magic", 0.5], ["Runic Lore", 0.5]], activatePortal),
 	new Action("Complete Goal", 1000, [["Speed", 1]], completeGoal),
 	new Action("Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove),
 	new Action("Kudzu Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove, startWalk, tickWalk),
 	new Action("Spore Chop", getChopTime(1000, 0.1), [["Woodcutting", 1], ["Speed", 0.2]], completeMove, null, tickSpore),
+	new Action("Oyster Chop", getChopTime(1000, 0.2), [["Woodcutting", 1], ["Speed", 0.2]], completeMove),
 	new Action("Create Axe", 2500, [["Smithing", 1]], simpleConvert([["Iron Bar", 1]], [["Iron Axe", 1]]), simpleRequire([["Iron Bar", 1]])),
 	new Action("Create Pick", 2500, [["Smithing", 1]], simpleConvert([["Iron Bar", 1]], [["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
 	new Action("Create Hammer", 2500, [["Smithing", 1]], simpleConvert([["Iron Bar", 1]], [["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
