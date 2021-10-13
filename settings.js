@@ -8,6 +8,8 @@ let settings = {
 	loadPrereqs: false,
 	showingRunes: true,
 	warnings: true,
+	followZone: true,
+	timeline: true,
 }
 
 function setSetting(toggler, value, ...args) {
@@ -63,6 +65,19 @@ function toggleWarnings() {
 	return settings.warnings;
 }
 
+function toggleFollowZone() {
+	settings.followZone = !settings.followZone;
+	document.querySelector("#follow-zone-toggle").innerHTML = settings.followZone ? "Follow on zone complete" : "Stay on selected zone";
+	return settings.followZone;
+}
+
+function toggleTimeline() {
+	settings.timeline = !settings.timeline;
+	document.querySelector("#timeline-toggle").innerHTML = settings.timeline ? "Hide timeline" : "Show timeline";
+	document.querySelector("#timelines").hidden = !settings.timeline;
+	return settings.timeline;
+}
+
 function switchRuneList() {
 	settings.showingRunes = !settings.showingRunes;
 	document.querySelector("#runes").classList.toggle("active-pane", settings.showingRunes);
@@ -73,16 +88,23 @@ function switchRuneList() {
 function loadSettings(savedSettings) {
 
 	setSetting(toggleBankedTime, savedSettings.usingBankedTime);
-
 	setSetting(toggleRunning, !!savedSettings.running);
-
 	setSetting(toggleAutoRestart, savedSettings.autoRestart);
-
 	setSetting(toggleGrindMana, !!savedSettings.grindMana);
-
 	setSetting(toggleLoadPrereqs, !!savedSettings.loadPrereqs);
-
 	setSetting(switchRuneList, !!savedSettings.showingRunes);
+	setSetting(switchRuneList, !!savedSettings.followZone);
+	setSetting(switchRuneList, !!savedSettings.timeline);
 
 	Object.assign(settings, savedSettings, settings);
+}
+
+configBox = document.querySelector("#config-box");
+
+function hideConfig(){
+	configBox.hidden = true;
+}
+
+function viewConfig(){
+	configBox.hidden = false;
 }
