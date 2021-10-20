@@ -61,7 +61,7 @@ function getRealmMult(name){
 			return a + z.mapLocations
 				.flat()
 				.filter(l => l.type.name == "Mana-infused Rock")
-				.reduce((a, c) => a + c.priorCompletionData[2], 0);
+				.reduce((a, c) => a + c.priorCompletionData[realm.index], 0);
 		}, 0) * realm.multPerRock;
 	}
 	return realm.mult + 1;
@@ -126,11 +126,11 @@ let realms = [
 	// Clones cannot help each other at all.
 	new Realm(
 		"Compounding Realm",
-		"A realm where things get harder the more you do.  Each action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5%.  You'll get better at learning from repeated tasks (stat slowdown will start 0.01 points later per mana rock completion).",
+		"A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5%.  You'll get better at learning from repeated tasks (stat slowdown will start 0.01 points later per mana rock completion).",
 		() => Infinity,
 		() => {},
 		getCompoundingMultDesc,
-		0.01
+		0.05
 	),
 ];
 

@@ -203,11 +203,21 @@
 						<div class="description">Paste queues in the box.</div>
 					</div>
 				</div>
+				<div class="option-row">
+					<div class="option block clickable option--half-width" onclick="longExportQueues()">
+						<span class="name">Long Export</span>
+						<div class="description">This will put your current queues (all zones, this realm) on your clipboard.</div>
+					</div>
+					<div class="option block clickable option--half-width" onclick="longImportQueues()">
+						<span class="name">Long Import</span>
+						<div class="description">Paste queues for all zones in this realm in the box.</div>
+					</div>
+				</div>
 			</div>
 			<div class="version" title="By Nucaranlaeg"><!--Some code contributed by Dimava and Gnomez-->
 				<a href="https://paypal.me/SamBenner" target="_blank">Support Development</a>
 				<a href="https://discord.gg/EXAHXBr" target="_blank">Discord</a><br>
-				Version <span id="version">2.2.1</span><br>
+				Version <span id="version">2.2.5</span><br>
 				©2021
 			</div>
 		</div>
@@ -237,41 +247,43 @@
 			<table id="map-inner"></table>
 		</div>
 		<div id="location" class="vertical-block">
-			<h3>Selected Location</h3>
-			<h4 id="location-name"></h4>
-			<div id="location-description"></div>
-			<div id="location-next"></div>
-			<div id="location-water"></div>
-			<div id="location-route">
-				<button id="route-button" class="button" onclick="loadRoute()">
-					Load best route to this rock
-					<input type="hidden" id="x-loc">
-					<input type="hidden" id="y-loc">
-				</button>
-				<div id="route-has-route">
-					Route time: <span id="route-best-time"></span>s<br>
-					Stuff used: <span id="route-requirements"><span class="require"></span></span><br>
-					Mana used: <span id="route-best-mana-used"></span><br>
-					Clones lost: <span id="route-best-clones-lost"></span><br>
-					Est. mana left: <span id="route-best-mana-left"></span>s<br>
-					Probably 
-						<span id="route-best-unminable" hidden>cannot be refined</span>
-						<span id="route-best-minable">can be refined about <u>123</u> times<span hidden></span></span>
-					right now<br>
-					<span id="route-best-invalidated" hidden>Route values will be reset on the next visit.</span>
+			<div id="location-details">
+				<h3>Selected Location</h3>
+				<h4 id="location-name"></h4>
+				<div id="location-description"></div>
+				<div id="location-next"></div>
+				<div id="location-water"></div>
+				<div id="location-route">
+					<button id="route-button" class="button" onclick="loadRoute()">
+						Load best route to this rock
+						<input type="hidden" id="x-loc">
+						<input type="hidden" id="y-loc">
+					</button>
+					<div id="route-has-route">
+						Route time: <span id="route-best-time"></span>s<br>
+						Stuff used: <span id="route-requirements"><span class="require"></span></span><br>
+						Mana used: <span id="route-best-mana-used"></span><br>
+						Clones lost: <span id="route-best-clones-lost"></span><br>
+						Est. mana left: <span id="route-best-mana-left"></span>s<br>
+						Probably 
+							<span id="route-best-unminable" hidden>cannot be refined</span>
+							<span id="route-best-minable">can be refined about <u>123</u> times<span hidden></span></span>
+						right now<br>
+						<span id="route-best-invalidated" hidden>Route values will be reset on the next visit.</span>
+					</div>
+					<div id="route-not-visited">
+						There is no known routes to this location.
+					</div>
+					<div id="failed-route">
+						There is no known valid route to this location - check your prerequisites!
+					</div>
+					<div id="dead-route">
+						This route ends with all your clones dead!
+					</div>
+					<button id="delete-route-button">Forget this route</button>
 				</div>
-				<div id="route-not-visited">
-					There is no known routes to this location.
-				</div>
-				<div id="failed-route">
-					There is no known valid route to this location - check your prerequisites!
-				</div>
-				<div id="dead-route">
-					This route ends with all your clones dead!
-				</div>
-				<button id="delete-route-button">Forget this route</button>
+				<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 			</div>
-			<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 			<div class="bottom-vertical-block">
 				<hr>
 				<h3>Actions</h3>
@@ -383,7 +395,7 @@
 				<div class="description big-description">For performance reasons, the blue shading on unused zone routes may not update frequently; this forces an update.</div>
 			</div>
 			<div class="option block clickable" onclick="toggleTimeline()">
-				<span id="timeline-toggle">Hide timeline</span>
+				<span id="timeline-toggle">Showing timeline</span>
 				<div class="description big-description">It's a neat feature, but it might be a little eye-grabbing.</div>
 			</div>
 			<div class="option block clickable" onclick="Route.invalidateRouteCosts()">
@@ -391,7 +403,7 @@
 				<div class="description big-description">You can also double-click on the Grind option.</div>
 			</div>
 			<div class="option block clickable" onclick="toggleWarnings()">
-				<span id="warnings">Showing Warnings</span>
+				<span id="warnings">Showing warnings</span>
 				<div class="description big-description">The game warns on clearing queues.</div>
 			</div>
 		</div>
