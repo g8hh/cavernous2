@@ -88,6 +88,10 @@ class Zone {
 		}
 		if (realms[currentRealm].name == "Compounding Realm" && this.index == 0 && getRealm("Compounding Realm").mult !== null){
 			getRealm("Compounding Realm").mult += 0.05;
+			stats.filter(s => s.learnable && s.base >= 99 + getRealmMult("Compounding Realm")).forEach(s => {
+				s.dirty = true;
+				s.update(true);
+			});		
 		}
 		this.display();
 	}
@@ -120,36 +124,6 @@ class Zone {
 
 	sumRoute(route, actualRequirements, startDamage){
 		let routeOptions = this.routes.filter(r => r.realm == currentRealm);
-		// routeOptions = routeOptions.map(r => {
-		// 	let requirements = (actualRequirements !== null ? actualRequirements : route.require).map(s => {
-		// 		return {
-		// 			"name": s.name,
-		// 			"count": s.count,
-		// 		};
-		// 	});
-		// 	for (let req of requirements){
-		// 		let thing = r.stuff.find(s => s.name == req.name);
-		// 		if (thing){
-		// 			req.count = Math.max(req.count - thing.count, 0);
-		// 		}
-		// 	}
-		// 	for (let thing of r.require){
-		// 		let req = requirements.find(s => s.name == thing.name);
-		// 		if (req){
-		// 			req.count += thing.count;
-		// 		} else {
-		// 			requirements.push({
-		// 				"name": thing.name,
-		// 				"count": thing.count,
-		// 			});
-		// 		}
-		// 	}
-		// 	let health = startDamage.map((h, i) => {
-		// 		if (r.cloneHealth[i] === undefined) return h;
-		// 		return Math.max(h + r.cloneHealth[i][1], 0) + r.cloneHealth[0][0];
-		// 	});
-		// 	return [r, requirements, health];
-		// });
 		routeOptions = routeOptions.filter(r => {
 			let requirements = (actualRequirements !== null ? actualRequirements : route.require).map(s => {
 				return {
@@ -516,7 +490,7 @@ let zones = [
 			'█^+██╖§█§§§§§╣(█',
 			'██╖+¤m╖╖.███████',
 			'██+██╖§█♣╖███╖=█',
-			'██╣██████╖██╖╖██',
+			'██╣██████╖█▣╖╖██',
 			'█0~╣█████╖██╖███',
 			'███╣██☼╖╖♣♣╖♣╖██',
 			'██√§███╖██╖██╖██',

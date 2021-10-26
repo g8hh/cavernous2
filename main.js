@@ -38,7 +38,7 @@ function getLocationType(name) {
 }
 
 function getLocationTypeBySymbol(symbol) {
-	return locationTypes.find(a => a.symbol == symbol).name;
+	return locationTypes.find(a => a.symbol == symbol)?.name;
 }
 
 function getMessage(name) {
@@ -61,9 +61,13 @@ function writeNumber(value, decimals = 0) {
 function writeTime(value) {
 	if (value == Infinity) return "Infinity";
 	let hours = Math.floor(value / 3600);
+	hours = `${hours ? `${hours}:` : ""}`
 	let minutes = Math.floor((value % 3600) / 60);
+	minutes = minutes || hours ? (minutes > 9 ? `${minutes}:` : `0${minutes}:`) : "";
 	let seconds = Math.floor((value % 60) * 10) / 10;
-	return `${hours ? `${hours}:` : ""}${minutes || hours ? (minutes > 9 ? `${minutes}:` : `0${minutes}:`) : ""}${seconds < 10 && minutes ? `0${seconds.toFixed(1)}` : seconds.toFixed(1)}`;
+	if (value > 100 * 3600) seconds = Math.floor(seconds);
+	seconds = seconds < 10 && minutes ? `0${seconds.toFixed(value > 100 * 3600 ? 0 : 1)}` : seconds.toFixed(value > 100 * 3600 ? 0 : 1);
+	return `${hours}${minutes}${seconds}`;
 }
 
 let timeBankNode;
@@ -84,7 +88,8 @@ function resetLoop() {
 	if (mana.base == 6) getMessage("Strip Mining").display();
 	if (mana.base == 7.4) getMessage("Buy More Time").display();
 	if (routes.length == 3) getMessage("All the known ways").display() && setSetting(toggleGrindMana, true);
-	stats.forEach(s => {
+	stats.forEach((s, i) => {
+		GrindRoute.updateBestRoute(s.name, s.current - loopStatStart[i]);
 		s.reset();
 		s.update();
 	});
@@ -133,6 +138,70 @@ function resetLoop() {
 	if (isNaN(timeBanked)){
 		timeBanked = 0;
 	}
+	setStartData();
+}
+
+let loopActions = {};
+let loopStatStart = [];
+let loopLogVisible = false;
+const loopLogBox = document.querySelector("#loop-log-box");
+const logEntryTemplate = document.querySelector("#log-entry-template");
+logEntryTemplate.removeAttribute("id");
+const statLogEntryTemplate = document.querySelector("#stat-log-entry-template");
+statLogEntryTemplate.removeAttribute("id");
+
+function setStartData(){
+	loopActions = {};
+	loopStatStart = stats.map(s => s.base);
+}
+
+function displayLoopLog(){
+	loopLogBox.hidden = false;
+	loopLogVisible = true;
+	let loopActionNode = loopLogBox.querySelector("#loop-actions");
+	let loopStatNode = loopLogBox.querySelector("#loop-stats");
+	while (loopActionNode.firstChild){
+		loopActionNode.removeChild(loopActionNode.lastChild);
+	}
+	while (loopStatNode.firstChild){
+		loopStatNode.removeChild(loopStatNode.lastChild);
+	}
+	let actions = Object.entries(loopActions);
+	actions = actions.sort((a, b) => b[1] - a[1]);
+	let totalActionNode = logEntryTemplate.cloneNode(true);
+	totalActionNode.querySelector(".name").innerHTML = "Total clone-seconds";
+	totalActionNode.querySelector(".value").innerHTML = writeNumber(actions.reduce((a, c) => a + c[1], 0) / 1000, 1);
+	totalActionNode.style.fontWeight = "bold";
+	loopActionNode.append(totalActionNode);
+	let totalStatNode = statLogEntryTemplate.cloneNode(true);
+	totalStatNode.querySelector(".name").innerHTML = "Total stats gained";
+	totalStatNode.style.fontWeight = "bold";
+	loopStatNode.append(totalStatNode);
+	for (let i = 0; i < actions.length; i++){
+		let node = logEntryTemplate.cloneNode(true);
+		node.classList.add(actions[i][0].replace(/ /g, '-'));
+		node.querySelector(".name").innerHTML = actions[i][0];
+		node.querySelector(".value").innerHTML = writeNumber(actions[i][1] / 1000, 1);
+		loopActionNode.append(node);
+		node.style.color = setRGBContrast(window.getComputedStyle(node).backgroundColor);
+	}
+	let totalStats = 0;
+	for (let i = 0; i < loopStatStart.length; i++){
+		if (!stats[i].learnable) continue;
+		if (stats[i].current == loopStatStart[i]) continue;
+		let node = statLogEntryTemplate.cloneNode(true);
+		node.querySelector(".name").innerHTML = stats[i].name;
+		node.querySelector(".current-value").innerHTML = writeNumber(stats[i].current - loopStatStart[i], 3);
+		node.querySelector(".base-value").innerHTML = writeNumber(stats[i].base - loopStatStart[i], 3);
+		totalStats += stats[i].base - loopStatStart[i];
+		loopStatNode.append(node);
+	}
+	totalStatNode.querySelector(".base-value").innerHTML = writeNumber(totalStats, 3);
+}
+
+function hideLoopLog(){
+	loopLogBox.hidden = true;
+	loopLogVisible = false;
 }
 
 /********************************************* Saving *********************************************/
@@ -188,10 +257,14 @@ function save(){
 		"timeBanked": timeBanked,
 	}
 	let messageData = messages.map(m => [m.name, m.displayed]);
-	let savedRoutes = JSON.stringify(routes, ((key, value) => {
+	let savedRoutes = JSON.parse(JSON.stringify(routes, ((key, value) => {
 		if (key == "usedRoutes") return undefined;
 		return value;
-	}));
+	})));
+	let savedGrindRoutes = JSON.parse(JSON.stringify(grindRoutes, ((key, value) => {
+		if (key == "usedRoutes") return undefined;
+		return value;
+	})));
 	let runeData = runes.map(r => {
 		return {
 			"name": r.name,
@@ -208,15 +281,22 @@ function save(){
 		time,
 		messageData,
 		settings,
-		savedRoutes,
+		routes: savedRoutes,
+		grindRoutes: savedGrindRoutes,
 		runeData,
 	});
-	localStorage[saveName] = btoa(saveString);
+	localStorage[saveName] = LZString.compressToBase64(saveString);
 }
 
 function load(){
 	if (!localStorage[saveName]) return setup();
-	let saveGame = JSON.parse(atob(localStorage[saveName]));
+	let saveGame;
+	try {
+		saveGame = JSON.parse(LZString.decompressFromBase64(localStorage[saveName]));
+	} catch {
+		// Prior to 2.2.6
+		saveGame = JSON.parse(atob(localStorage[saveName]));
+	}
 	if (!saveGame.routes) saveGame.routes = JSON.parse(saveGame.savedRoutes);
 	previousVersion = saveGame.version || 2;
 	if (version < previousVersion) {
@@ -265,6 +345,9 @@ function load(){
 	timeBanked = +saveGame.time.timeBanked;
 	if (saveGame.routes){
 		routes = Route.fromJSON(saveGame.routes);
+	}
+	if (saveGame.grindRoutes){
+		grindRoutes = GrindRoute.fromJSON(saveGame.grindRoutes);
 	}
 	for (let i = 0; i < (saveGame.runeData || []).length; i++){
 		runes[i].upgradeCount = saveGame.runeData[i].upgradeCount || 0;
@@ -338,7 +421,7 @@ let lastAction = Date.now();
 let timeBanked = 0;
 let queueTime = 0;
 let queuesNode;
-let queueTimeNode;
+let queueTimeNode, queueActionNode;
 let currentClone = 0;
 let loopCompletions = 0;
 let fps = 60;
@@ -379,12 +462,11 @@ setInterval(function mainLoop() {
 	}
 	let timeAvailable = time;
 	if (settings.usingBankedTime && timeBanked > 0){
-		let speedMultiplier = 3 + mana.base / 5;
-		let speedCap = settings.debug_speedMultiplier || 10;
-		timeAvailable = Math.min(time + timeBanked, time * Math.min(speedMultiplier, speedCap));
+		let speedMultiplier = 3 + mana.base ** 0.4;
+		timeAvailable = Math.min(time + timeBanked, time * speedMultiplier);
 	}
-	if (timeAvailable > 1000) {
-		timeAvailable = 1000;
+	if (timeAvailable > settings.maxTotalTick) {
+		timeAvailable = settings.maxTotalTick;
 	}
 	if (timeAvailable > mana.current * 1000){
 		timeAvailable = mana.current * 1000;
@@ -394,9 +476,14 @@ setInterval(function mainLoop() {
 	}
 	let timeLeft = timeAvailable;
 
-	timeLeft = Clone.performActions(timeAvailable);
-	let timeUsed = timeAvailable - timeLeft;
-	zones[currentZone].tick(timeUsed);
+	let timeUsed = 0;
+	while (timeAvailable > 0){
+		timeLeft = Clone.performActions(Math.min(timeAvailable, MAX_TICK));
+		let tickTimeUsed = Math.min(timeAvailable - timeLeft, MAX_TICK);
+		timeUsed += tickTimeUsed;
+		zones[currentZone].tick(tickTimeUsed);
+		timeAvailable -= MAX_TICK;
+	}
 
 	if (timeUsed > time && !isNaN(timeUsed - time)) {
 		timeBanked -= timeUsed - time;
@@ -404,16 +491,19 @@ setInterval(function mainLoop() {
 	} else if (!isNaN((time - timeUsed) / 2)){
 		timeBanked += (time - timeUsed) / 2;
 	}
-	if (timeLeft && (settings.autoRestart == 1 || settings.autoRestart == 2)){
+	if (timeLeft > 0.001 && (settings.autoRestart == 1 || settings.autoRestart == 2)){
 		resetLoop();
 	}
 	queueTimeNode = queueTimeNode || document.querySelector("#time-spent");
 	queueTimeNode.innerText = writeNumber(queueTime / 1000, 1);
+	queueActionNode = queueActionNode || document.querySelector("#actions-spent");
+	queueActionNode.innerText = `${writeNumber(loopCompletions, 0)} (x${writeNumber(1 + loopCompletions / 40, 3)})`;
 	redrawOptions();
 	updateDropTarget();
 
 	stats.forEach(e => e.update());
 	drawMap();
+	if (loopLogVisible) displayLoopLog();
 }, Math.floor(1000 / fps));
 
 function setup(){
@@ -425,7 +515,6 @@ function setup(){
 	getMessage("Welcome to Cavernous!").display();
 	if (URLParams.has('timeless')) {
 		timeBanked = Infinity;
-		settings.debug_speedMultiplier = 50;
 	}
 }
 
@@ -577,6 +666,12 @@ let keyFunctions = {
 	},
 	"Equal": () => {
 		addActionToQueue("=");
+	},
+	">Equal": () => {
+		addActionToQueue("+");
+	},
+	"NumpadAdd": () => {
+		addActionToQueue("+");
 	},
 	"Escape": () => {
 		hideMessages();

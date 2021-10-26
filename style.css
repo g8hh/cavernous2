@@ -65,7 +65,7 @@ body {
 }
 
 .small-option {
-	width: 21px;
+	min-width: 21px;
 }
 
 .small-option .svg {
@@ -113,6 +113,10 @@ body {
 
 td.failed {
 	color: #ff0000;
+}
+
+td.unreached {
+	background-color: #33333311;
 }
 
 .action {
@@ -229,7 +233,18 @@ svg {
 	right: 8px;
 }
 
-.queue-time #time-spent {font-family: "Lucida Console", monospace;font-size: 14px;min-width: 3.1em;display: inline-block;text-align: right;font-variant-numeric: tabular-nums;}
+#queue-actions {
+	display: none;
+}
+
+#actions-spent,
+#time-spent {
+	font-family: "Lucida Console", monospace;
+	font-size: 14px;min-width: 3.1em;
+	display: inline-block;
+	text-align: right;
+	font-variant-numeric: tabular-nums;
+}
 
 #queues {
 	margin-top: 10px;
@@ -244,7 +259,7 @@ svg {
 	margin-top: 10px;
 }
 
-.timeline {
+.timeline:not(#loop-actions) {
 	height: 20px;
 	display: inline-flex;
 	flex-direction: row;
@@ -263,7 +278,8 @@ svg {
 .timeline > div {
 	position: relative;
 }
-.timeline > div:hover::after {
+
+.timeline:not(#loop-actions) > div:hover::after {
 	content: attr(data-name)"\a"attr(data-time)"ms";
 	position: absolute;
 	margin-top: -34px;
@@ -274,6 +290,10 @@ svg {
 	white-space: pre;
 	pointer-events: none;
 	padding: 2px;
+}
+
+.timeline:not(#loop-actions) > div:last-child:hover::after {
+	right: 0;
 }
 
 .timeline > div.Walk {
@@ -594,7 +614,7 @@ h4#location-name {
 	scrollbar-color: #5b6d6d #aacccc;
 }
 
-.zone {
+.zone:not(td) {
 	display: inline-block;
 	padding: 2px;
 	cursor: pointer;
@@ -768,7 +788,7 @@ td.granite {
 }
 
 td.basalt {
-	background-color: #2b251d;
+	background: repeating-linear-gradient(-45deg, #2b251d, #2b251d 1px, #4b453d 2px, #5b554d 2px);
 }
 
 td.mushroom {
@@ -1155,6 +1175,46 @@ td:hover:after {
 
 #config-wrapper .option {
 	width: 100%;
+}
+
+#loop-log-box {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	right: 0;
+	background-color: #00000099;
+	z-index: 100;
+}
+
+#loop-log-wrapper {
+	position: absolute;
+	top: 10%;
+	left: 30%;
+	right: 30%;
+	width: 40%;
+	background-color: #aacccc;
+	padding: 10px;
+	border-radius: 20px;
+	border: 2px solid #00000044;
+	text-align: center;
+	user-select: none;
+}
+
+#loop-stats,
+#loop-actions {
+	width: 49%;
+	display: inline-block;
+	max-height: 70vh;
+	overflow-y: auto;
+	scrollbar-width: thin;
+	vertical-align: top;
+}
+
+.log-entry {
+	display: flex;
+	justify-content: space-between;
+	padding: 2px 5px;
 }
 
 .queue-buttons {

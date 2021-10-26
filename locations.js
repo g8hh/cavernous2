@@ -80,10 +80,12 @@ class Location {
 		} else {
 			if (["Walk", "Kudzu Chop"].includes(this.type.getEnterAction(this.entered).name)){
 				if (!clones[currentClone].walkTime){
-					// Not sure why this is happening... walktime should be set when start() is called the first time.
-					this.start(this.completions, this.priorCompletions, this.x, this.y);
+					// Second and following entrances
+					clones[currentClone].walkTime = this.type.getEnterAction(this.entered).start(this.completions, this.priorCompletions, this.x, this.y);
 				}
 				this.remainingEnter = clones[currentClone].walkTime;
+			} else {
+				clones[currentClone].walkTime = 0;
 			}
 			let skillDiv = this.type.getEnterAction(this.entered).getSkillDiv();
 			usedTime = Math.min(time / skillDiv, this.remainingEnter);
@@ -135,10 +137,10 @@ class Location {
 	zoneTick(time) {
 		if (!this.water) return;
 		zones[currentZone].getAdjLocations(this.x, this.y).forEach(([tile, loc]) => {
-			if (!walkable.includes(tile)) return;
+			if (!walkable.includes(tile) && !shrooms.includes(tile)) return;
 			let prev_level = Math.floor(loc.water * 10);
 			// 1 water should add 0.04 water per second to each adjacent location.
-			loc.water = Math.min(1, loc.water + (this.water / 158) ** 2 * time);
+			loc.water = Math.min(Math.max(this.water, loc.water), loc.water + (this.water / 158 / (shrooms.includes(tile) ? 2 : 1)) ** 2 * time);
 			if (prev_level != Math.floor(loc.water * 10)){
 				mapDirt.push([loc.x + zones[currentZone].xOffset, loc.y + zones[currentZone].yOffset]);
 			}

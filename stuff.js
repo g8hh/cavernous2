@@ -92,13 +92,20 @@ let stuff = [
 	new Stuff("Steel Sword", ")", "A steel sword.  Sharp! (+2 attack)  Max 1 weapon per clone.", "#222222", 0, calcCombatStats),
 	new Stuff("Steel Shield", "[", "A steel shield.  This should help you not die. (+2 defense)  Max 1 shield per clone.", "#222222", 0, calcCombatStats),
 	new Stuff("Steel Armour", "]", "A suit of steel armour.  This should help you take more hits. (+15 health)  Max 1 armour per clone.", "#222222", 0, calcCombatStats),
-	new Stuff("Iron Axe", "¢", "An iron axe.  Gives +15 (or +15%) to Woodcutting, and applies 1% of your Woodcutting skill to combat.", "#777777", 0, getStatBonus("Woodcutting", 15)),
-	new Stuff("Iron Pick", "⛏", "An iron pickaxe.  Gives +15 (or +15%) to Mining, and applies 1% of your Mining skill to combat.", "#777777", 0, getStatBonus("Mining", 15)),
-	new Stuff("Iron Hammer", hammerSVG, "An iron hammer.  Gives +15 (or +15%) to Smithing, and applies 1% of your Smithing skill to combat.", "#777777", 0, getStatBonus("Smithing", 15)),
+	new Stuff("Iron Axe", "¢", "An iron axe.  Gives +15 or +15% to Woodcutting (whichever is greater), and applies 1% of your Woodcutting skill to combat.", "#777777", 0, getStatBonus("Woodcutting", 15)),
+	new Stuff("Iron Pick", "⛏", "An iron pickaxe.  Gives +15 or +15% to Mining (whichever is greater), and applies 1% of your Mining skill to combat.", "#777777", 0, getStatBonus("Mining", 15)),
+	new Stuff("Iron Hammer", hammerSVG, "An iron hammer.  Gives +15 or +15% to Smithing (whichever is greater), and applies 1% of your Smithing skill to combat.", "#777777", 0, getStatBonus("Smithing", 15)),
 ];
 
 function setContrast(colour) {
 	darkness = (parseInt(colour.slice(1, 3), 16) * 299 + parseInt(colour.slice(3, 5), 16) * 587 + parseInt(colour.slice(5, 7), 16) * 114) / 1000;
+	return darkness > 125 ? "#000000" : "#ffffff";
+}
+
+function setRGBContrast(colour) {
+	colour = [...colour.matchAll(/\d+/g)];
+	if (colour.length == 4) return "#000000";
+	darkness = (colour[0] * 299 + colour[1] * 587 + colour[2] * 114) / 1000;
 	return darkness > 125 ? "#000000" : "#ffffff";
 }
 

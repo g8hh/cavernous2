@@ -2,6 +2,9 @@
 <head>
 	<title>循环洞穴2 - Cavernous</title>
 	<link rel="stylesheet" type="text/css" href="style.css">
+	<!--Dependencies-->
+	<script type="text/javascript" defer src="dependencies/lz-string/lz-string.min.js"></script>
+	<!--Game code-->
 	<script type="text/javascript" defer src="icons.js"></script>
 	<script type="text/javascript" defer src="settings.js"></script>
 	<script type="text/javascript" defer src="stats.js"></script>
@@ -14,6 +17,7 @@
 	<script type="text/javascript" defer src="zones.js"></script>
 	<script type="text/javascript" defer src="map.js"></script>
 	<script type="text/javascript" defer src="routes.js"></script>
+	<script type="text/javascript" defer src="grind_routes.js"></script>
 	<script type="text/javascript" defer src="queues.js"></script>
 	<script type="text/javascript" defer src="saved_queues.js"></script>
 	<script type="text/javascript" defer src="highlights.js"></script>
@@ -114,6 +118,17 @@
 			<div class="queue-buttons"><span class="button" onclick="deleteSavedQueue(this)">Delete</span></div>
 		</div>
 		<div id="message-link-template" class="message-link" onclick="viewMessage(event, this)"></div>
+		<div id="log-entry-template" class="log-entry">
+			<span class="name"></span>
+			<span class="value"></span>
+		</div>
+		<div id="stat-log-entry-template" class="log-entry">
+			<span class="name"></span>
+			<span>
+				<span class="current-value"></span>
+				(<span class="base-value"></span>)
+			</span>
+		</div>
 	</div>
 	<div class="vertical-blocks">
 		<div id="options" class="vertical-block">
@@ -146,6 +161,8 @@
 							<tr id="grind-stats-header"></tr>
 							<tbody id="grind-stats"></tbody>
 							<tr id="grind-stats-footer"></tr>
+							<tr><td class="failed" colspan="100" style="text-align: left;">Some route failed</td></tr>
+							<tr><td class="unreached" colspan="100" style="text-align: left;">Some mana rock unreached</td></tr>
 						</table>
 					</div>
 				</div>
@@ -168,7 +185,7 @@
 						Arrow keys to move<br>
 						Space to act at your location<br>
 						Backspace removes a command<br>
-						1-3 to inscribe a rune<br>
+						1-5 to inscribe a rune<br>
 						Ctrl-backspace clears the whole queue<br>
 						Tab selects the next clone<br>
 						Ctrl-click selects multiple clones<br>
@@ -213,17 +230,22 @@
 						<div class="description">Paste queues for all zones in this realm in the box.</div>
 					</div>
 				</div>
+				<div class="option block clickable" onclick="displayLoopLog()">
+					<span class="name">View loop log</span>
+					<div class="description">Might be laggy if it's open while running</div>
+				</div>
 			</div>
 			<div class="version" title="By Nucaranlaeg"><!--Some code contributed by Dimava and Gnomez-->
 				<a href="https://paypal.me/SamBenner" target="_blank">Support Development</a>
 				<a href="https://discord.gg/EXAHXBr" target="_blank">Discord</a><br>
-				Version <span id="version">2.2.5</span><br>
+				Version <span id="version">2.2.9</span><br>
 				©2021
 			</div>
 		</div>
 		<div id="stats" class="vertical-block">
 			<h3>Stats</h3>
 			<div class="queue-time">
+				<div id="queue-actions">Actions: <span id="actions-spent"></span></div>
 				Time spent: <span id="time-spent">0</span>s
 			</div>
 		</div>
@@ -253,6 +275,7 @@
 				<div id="location-description"></div>
 				<div id="location-next"></div>
 				<div id="location-water"></div>
+				<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 				<div id="location-route">
 					<button id="route-button" class="button" onclick="loadRoute()">
 						Load best route to this rock
@@ -282,7 +305,6 @@
 					</div>
 					<button id="delete-route-button">Forget this route</button>
 				</div>
-				<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 			</div>
 			<div class="bottom-vertical-block">
 				<hr>
@@ -323,16 +345,16 @@
 						<div class="description">Wither Rune</div>
 					</div>
 					<div class="small-option block clickable hidden-action" onclick="keyFunctions.Digit3()">
+						<span id="add-action-duplication">D</span>
+						<div class="description">Duplication Rune</div>
+					</div>
+					<div class="small-option block clickable hidden-action" onclick="keyFunctions.Digit4()">
 						<span id="add-action-teleport-to">T</span>
 						<div class="description">Teleport To Rune</div>
 					</div>
-					<div class="small-option block clickable hidden-action" onclick="keyFunctions.Digit4()">
+					<div class="small-option block clickable hidden-action" onclick="keyFunctions.Digit5()">
 						<span id="add-action-teleport-from">F</span>
 						<div class="description">Teleport From Rune</div>
-					</div>
-					<div class="small-option block clickable hidden-action" onclick="keyFunctions.Digit5()">
-						<span id="add-action-duplication">D</span>
-						<div class="description">Duplication Rune</div>
 					</div>
 					<div class="small-option block clickable hidden-action" onclick="keyFunctions['>Digit1']()">
 						<span id="add-action-arcane-shield">A</span>
@@ -361,9 +383,15 @@
 					<span id="repeat-last-action">Repeat following action(s)</span>
 					<div class="description">Repeat all actions after this action.</div>
 				</div>
-				<div class="option block clickable" onclick="addActionToQueue('=')">
-					<span id="sync-clones">Sync Clones</span> (=)
-					<div class="description">If other clones have sync actions, wait until they're all on sync actions.</div>
+				<div class="block-row">
+					<div class="small-option block clickable" style="width:45%" onclick="addActionToQueue('=')">
+						Sync (=)
+						<div class="description">If other clones have sync actions, wait until they're all on sync actions.</div>
+					</div>
+					<div class="small-option block clickable" style="width:45%" onclick="addActionToQueue('+')">
+						No Sync (+)
+						<div class="description">If a clone takes a No Sync action, it will not be considered for syncing with other clones until it takes another No Sync action.</div>
+					</div>
 				</div>
 			</div>
 		</div>
@@ -406,6 +434,22 @@
 				<span id="warnings">Showing warnings</span>
 				<div class="description big-description">The game warns on clearing queues.</div>
 			</div>
+			<div class="option block clickable" onclick="toggleUseWASD()">
+				<span id="use-wasd-toggle">Use WASD</span>
+				<div class="description big-description">Some people.</div>
+			</div>
+			<div class="option block enter-value">
+				<span class="label" for="max-time">Max tick time (ms)</span>
+				<input id="max-time" onblur="setMaxTickTime()" />
+				<div class="description big-description">Minimum value is 250; set this lower if the game is choppy.  The maximum speed is dependant on your base Mana or capped by this value.</div>
+			</div>
+		</div>
+	</div>
+	<div id="loop-log-box" onclick="hideLoopLog()" hidden>
+		<div id="loop-log-wrapper">
+			<h3>Current Run Stats</h3>
+			<div id="loop-stats"></div>
+			<div id="loop-actions" class="timeline"></div>
 		</div>
 	</div>
 </body>

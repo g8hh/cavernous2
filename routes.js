@@ -1,5 +1,59 @@
-class Route {
+class BaseRoute {
+	constructor(){}
+
+	pickRoute(zone, route, actualRequirements = null, health = clones.map(c => 0)){
+		let routeOptions = zones[zone].sumRoute(route, actualRequirements, health);
+		if (zone == 0){
+			if (routeOptions.length == 0) return null;
+			let health = getStat("Health");
+			route = routeOptions.find(r => r[1].every(s => s.count == 0) && r[2].every(h => Math.abs(h) < health.base + getEquipHealth(r[1]))) || [];
+			return route[0] ? [route[0]] : null;
+		}
+		for (let i = 0; i < routeOptions.length; i++){
+			let routes = this.pickRoute(zone - 1, routeOptions[i][0], routeOptions[i][1], routeOptions[i][2]);
+			if (routes !== null){
+				return [...routes, routeOptions[i][0]];
+			}
+		}
+		return null;
+	}
+
+	loadRoute(){
+		let success = true;
+		if (this.zone > 0){
+			let routes = this.pickRoute(this.zone - 1, {"require": this.requirements}, null, this.cloneHealth);
+			markRoutesChanged();
+			this.usedRoutes = routes;
+			if (routes !== null){
+				for (let i = 0; i < routes.length; i++){
+					routes[i].loadRoute(zones[i], false);
+				}
+				this.loadingFailed = false;
+			} else {
+				success = false;
+				this.loadingFailed = true;
+			}
+		}
+		for (let i = 0; i < this.route.length; i++){
+			if (!this.route[i].endsWith("I")) this.route[i] += "I";
+		}
+		for (let i = 0; i < zones[this.zone].queues.length; i++){
+			if (i == 0 || this.route.length == 1) {
+				zones[this.zone].queues[i].fromString(this.route[0]);
+			} else if (this.route.length == 2) {
+				zones[this.zone].queues[i].fromString(this.route[1]);
+			} else {
+				zones[this.zone].queues[i].fromString(this.route[i] || this.route[this.route.length - 1] || "");
+			}
+		}
+		redrawQueues();
+		return success;
+	}
+}
+
+class Route extends BaseRoute {
 	constructor(x) {
+		super();
 		if (x instanceof Location) {
 			this.x = x.x;
 			this.y = x.y;
@@ -41,55 +95,6 @@ class Route {
 			return;
 		}
 		Object.assign(this, x);
-	}
-
-	pickRoute(zone, route, actualRequirements = null, health = clones.map(c => 0)){
-		let routeOptions = zones[zone].sumRoute(route, actualRequirements, health);
-		if (zone == 0){
-			if (routeOptions.length == 0) return null;
-			let health = getStat("Health");
-			route = routeOptions.find(r => r[1].every(s => s.count == 0) && r[2].every(h => Math.abs(h) < health.base + getEquipHealth(r[1]))) || [];
-			return route[0] ? [route[0]] : null;
-		}
-		for (let i = 0; i < routeOptions.length; i++){
-			let routes = this.pickRoute(zone - 1, routeOptions[i][0], routeOptions[i][1], routeOptions[i][2]);
-			if (routes !== null){
-				return [...routes, routeOptions[i][0]];
-			}
-		}
-		return null;
-	}
-
-	loadRoute(){
-		let success = true;
-		if (this.zone > 0){
-			let routes = this.pickRoute(this.zone - 1, {"require": this.requirements}, null, this.cloneHealth);
-			markRoutesChanged();
-			this.usedRoutes = routes;
-			if (routes !== null){
-				for (let i = 0; i < routes.length; i++){
-					routes[i].loadRoute(zones[i]);
-				}
-				this.loadingFailed = false;
-			} else {
-				success = false;
-				this.loadingFailed = true;
-			}
-		}
-		for (let i = 0; i < this.route.length; i++){
-			if (!this.route[i].endsWith("I")) this.route[i] += "I";
-		}
-		for (let i = 0; i < zones[this.zone].queues.length; i++){
-			if (i == 0 || this.route.length == 1) {
-				zones[this.zone].queues[i].fromString(this.route[0]);
-			} else if (this.route.length == 2) {
-				zones[this.zone].queues[i].fromString(this.route[1]);
-			} else {
-				zones[this.zone].queues[i].fromString(this.route[i] || this.route[this.route.length - 1] || "");
-			}
-		}
-		redrawQueues();
-		return success;
 	}
 
 	getRefineCost(relativeLevel = 0) {
@@ -242,6 +247,13 @@ function updateGrindStats(){
 		.map((z, zone_i) => routes
 		  .filter(t => t.zone == zone_i && t.realm == realm_i)
 		  .reduce((a, t) => a + (t.allDead || t.loadingFailed ? 0.005 : t.estimateRefineTimes()), 0)));
+	let reachedCounts = realms
+	  .filter(r => !r.locked || r.name == "Core Realm")
+	  .map((r, realm_i) => zones
+	    .filter(z => z.mapLocations.flat().length)
+	    .map((z, zone_i) =>
+		  z.mapLocations.flat().filter(l => l.type.name == "Mana-infused Rock").length !=
+		  routes.filter(t => t.zone == zone_i && t.realm == realm_i).length));
 	const header = document.querySelector("#grind-stats-header");
 	const body = document.querySelector("#grind-stats");
 	const footer = document.querySelector("#grind-stats-footer");
@@ -283,8 +295,11 @@ function updateGrindStats(){
 			let cellNode = cellTemplate.cloneNode(true);
 			cellNode.removeAttribute("id");
 			cellNode.innerHTML = Math.floor(rockCounts[j][i]);
-			if (rockCounts[j][i] % 1 > 0.01){
+			if (rockCounts[j][i] % 1 > 0.001){
 				cellNode.classList.add("failed");
+			}
+			if (reachedCounts[j][i]){
+				cellNode.classList.add("unreached");
 			}
 			rowNode.appendChild(cellNode);
 		}

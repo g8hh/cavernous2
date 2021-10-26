@@ -52,7 +52,7 @@ class Stat {
 		this.dirty = true;
 	}
 
-	update() {
+	update(forceIncreaseAtUpdate = false) {
 		if (!this.dirty) return;
 		this.updateValue();
 		if (!this.node){
@@ -68,10 +68,10 @@ class Stat {
 		} else {
 			this.effectNode.innerText = `${writeNumber(this.current < 100 ? this.current + this.bonus : this.current * (1 + (this.bonus / 100)), 2)} (${writeNumber(this.base, 2)})`;
 			let increaseRequired;
-			let scalingStart = 100 + getRealmMult("Compounding Realm");
+			let scalingStart = 99 + getRealmMult("Compounding Realm");
 			if (this.base < scalingStart){
 				increaseRequired = (this.base + 1) ** (10/9) - 1;
-			} else if (this.lastIncreaseRequired && this.base - 0.01 < this.lastIncreaseUpdate){
+			} else if (!forceIncreaseAtUpdate && this.lastIncreaseRequired && this.base - 0.01 < this.lastIncreaseUpdate){
 				increaseRequired = this.lastIncreaseRequired;
 			} else {
 				let v = this.base, step = this.base;
@@ -89,7 +89,11 @@ class Stat {
 				this.lastIncreaseRequired = increaseRequired;
 				this.lastIncreaseUpdate = this.base;
 			}
-			this.descriptionNode.innerText = `${this.description} (${writeNumber(100 - this.value * 100, 1)}%)\nIncrease at: ${writeNumber(increaseRequired, 2)}`;
+			let grindRoute = GrindRoute.getBestRoute(this.name);
+			this.descriptionNode.innerText = `${this.description} (${writeNumber(100 - this.value * 100, 1)}%)
+			Increase at: ${writeNumber(increaseRequired, 2)}
+			Current: ${writeNumber(this.current, 2)} + ${writeNumber(this.current < 100 ? this.bonus : this.current * (100 + this.bonus) / 100 - this.current, 2)}
+			Click to load best grind route (projected +${writeNumber(grindRoute?.projectedGain || 0, 3)}) in ${writeNumber(grindRoute?.totalTime / 1000 || 0, 1)}s`;
 		}
 		this.dirty = false;
 	}
@@ -101,6 +105,7 @@ class Stat {
 		this.node.querySelector(".name").innerHTML = this.name;
 		this.node.querySelector(".icon").innerHTML = this.icon.length ? this.icon : "&nbsp";
 		this.node.querySelector(".description").innerHTML = this.description;
+		this.node.onclick = this.loadGrindRoute.bind(this);
 		document.querySelector("#stats").appendChild(this.node);
 		if (this.name == "Runic Lore"){
 			if (!document.querySelector(".active-pane")){
@@ -109,6 +114,10 @@ class Stat {
 		} else if (this.name == "Spellcraft" || (this.name == "Magic" && this.base >= 75)){
 			document.querySelectorAll(".rune-spell-toggle").forEach(n => n.style.display = "inline-block");
 		}
+	}
+
+	loadGrindRoute() {
+		GrindRoute.getBestRoute(this.name)?.loadRoute();
 	}
 
 	reset() {
@@ -142,7 +151,7 @@ class Stat {
 }
 
 let stats = [
-	new Stat("Mana", "", "How long you can resist being pulled back to your cave.", 5, false),
+	new Stat("Mana", "", "How long you can resist being pulled back to your cave.  Also increases the maximum speed the game runs at.", 5, false),
 	new Stat("Mining", "⛏", "Your skill at mining, reducing the time it takes to do mining-type tasks."),
 	new Stat("Woodcutting", "", "How good you are at chopping down mushrooms of various kinds."),
 	new Stat("Magic", "★", "Your understanding of arcane mysteries."),

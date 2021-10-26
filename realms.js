@@ -51,12 +51,13 @@ function changeRealms(newRealm){
 	let currentActiveRealm = realmSelect.querySelector(".active-realm");
 	if (currentActiveRealm) currentActiveRealm.classList.remove("active-realm");
 	if (realmSelect.children[currentRealm]) realmSelect.children[currentRealm].classList.add("active-realm");
+	document.querySelector("#queue-actions").style.display = currentRealm == 3 ? "block" : "none";
 	resetLoop();
 }
 
-function getRealmMult(name){
+function getRealmMult(name, force = false){
 	let realm = getRealm(name);
-	if (realm.mult === undefined || realm.mult === null){
+	if (realm.mult === undefined || realm.mult === null || force){
 		realm.mult = zones.reduce((a, z) => {
 			return a + z.mapLocations
 				.flat()
@@ -68,11 +69,11 @@ function getRealmMult(name){
 }
 
 function getVerdantMultDesc(){
-	return `Total multiplier: x${writeNumber(getRealmMult("Verdant Realm"), 4)}`;
+	return `Total multiplier: x${writeNumber(getRealmMult("Verdant Realm", true), 4)}`;
 }
 
 function getCompoundingMultDesc(){
-	return `Stat slowdown start: ${writeNumber(100 + getRealmMult("Compounding Realm"), 4)}`;
+	return `Stat slowdown start: ${writeNumber(99 + getRealmMult("Compounding Realm", true), 4)}`;
 }
 
 const verdantMapping = {
@@ -105,6 +106,7 @@ let realms = [
 		() => (getRune("Duplication").upgradeCount || 0) + 3,
 		() => {
 			getRune("Duplication").upgradeCount++;
+			getRune("Duplication").updateDescription();
 			getMessage("Upgraded Duplication Rune").display();
 		},
 	),
@@ -117,6 +119,7 @@ let realms = [
 		() => (getRune("Wither").upgradeCount || 0) + 3,
 		() => {
 			getRune("Wither").upgradeCount++;
+			getRune("Wither").updateDescription();
 			getMessage("Upgraded Wither Rune").display();
 		},
 		getVerdantMultDesc,
@@ -126,7 +129,7 @@ let realms = [
 	// Clones cannot help each other at all.
 	new Realm(
 		"Compounding Realm",
-		"A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5%.  You'll get better at learning from repeated tasks (stat slowdown will start 0.01 points later per mana rock completion).",
+		"A realm where things get harder the more you do.  Each movement action completed (including walking - and pathfinding doesn't save you on that) increases the amount of time each subsequent task will take by 2.5%.  You'll get better at learning from repeated tasks (stat slowdown will start 0.05 points later per mana rock completion).",
 		() => Infinity,
 		() => {},
 		getCompoundingMultDesc,
