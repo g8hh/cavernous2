@@ -111,7 +111,7 @@ function drawNewMap() {
 					for (let i = 0; i < className.length; i++){
 						cellNode.classList.add(className[i]);
 					}
-					cellNode.setAttribute("data-content", descriptorMod ? descriptorMod(descriptor, x, y) : descriptor);
+					cellNode.setAttribute("data-content", descriptorMod ? cnItem(descriptorMod(descriptor, x, y)) : cnItem(descriptor));
 					if (zones[displayZone].mapLocations[y][x].water > 0.1) {
 						cellNode.classList.add(`watery-${Math.floor(zones[displayZone].mapLocations[y][x].water * 10)}`);
 					}
