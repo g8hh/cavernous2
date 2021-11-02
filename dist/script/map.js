@@ -128,7 +128,7 @@ function drawNewMap() {
                     for (let i = 0; i < classNames.length; i++) {
                         cellNode.classList.add(classNames[i]);
                     }
-                    cellNode.setAttribute("data-content", descriptorMod ? descriptorMod(descriptor, x, y) : descriptor);
+                    cellNode.setAttribute("data-content", descriptorMod ? cnItem(descriptorMod(descriptor, x, y)) : cnItem(descriptor));
                     if (zones[displayZone].mapLocations[y][x].water > 0.1) {
                         cellNode.classList.add(`watery-${Math.floor(zones[displayZone].mapLocations[y][x].water * 10)}`);
                     }
@@ -158,7 +158,7 @@ function drawCell(x, y) {
     if (location.water > 0.1) {
         cell.classList.add(`watery-${Math.floor(location.water * 10)}`);
     }
-    cell.setAttribute("data-content", descriptorMod ? descriptorMod(descriptor, x, y) : descriptor);
+    cell.setAttribute("data-content", descriptorMod ? cnItem(descriptorMod(descriptor, x, y)) : cnItem(descriptor));
 }
 function drawMap() {
     if (!isDrawn)
