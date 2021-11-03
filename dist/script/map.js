@@ -53,6 +53,7 @@ const classMapping = {
     "c": ["chieftain", "Goblin Chieftain"],
     "s": ["skeleton", "Skeleton"],
     "m": ["champion", "Goblin Champion"],
+    "G": ["golem", "Golem"],
     "Θ": ["zone", "Zone Portal"],
     "√": ["goal", "Goal"],
     "♠": ["mushroom", "Mushroom"],
@@ -66,6 +67,8 @@ const classMapping = {
     "|": ["sword3", "Enchanter - Sword"],
     "<": ["armour3", "Enchanter - Shield"],
     ">": ["shield3", "Enchanter - Armour"],
+    "1": ["barrier", "Timelike Barrier"],
+    "2": ["barrier", "Timelike Barrier"],
 };
 setTimeout(() => {
     Object.entries(classMapping).forEach(e => {
@@ -233,6 +236,8 @@ function setMined(x, y, icon) {
         "░": ".",
         "╖": ".",
         "╣": ".",
+        "1": ".",
+        "2": ".",
     };
     x += zones[currentZone].xOffset;
     y += zones[currentZone].yOffset;
@@ -280,8 +285,8 @@ function viewCell(target) {
                     document.querySelector("#location-next").innerHTML = `Next: ${type.nextCost(location.completions, location.priorCompletions, location.zone, x - zones[displayZone].xOffset, y - zones[displayZone].yOffset)}`;
                 }
                 else if (primaryAction) {
-                    let baseTimeDisplay = primaryAction.getProjectedDuration(1, location.wither);
-                    let timeDisplay = primaryAction.getProjectedDuration(1, location.wither, location.remainingPresent || location.remainingEnter, x, y);
+                    let baseTimeDisplay = primaryAction.getProjectedDuration(location, location.wither);
+                    let timeDisplay = primaryAction.getProjectedDuration(location, location.wither, location.remainingPresent || location.remainingEnter);
                     document.querySelector("#location-next").innerHTML = `Time: ${writeNumber(timeDisplay / 1000, 2)}s`;
                     if (timeDisplay < baseTimeDisplay)
                         document.querySelector("#location-next").innerHTML += ` / ${writeNumber(baseTimeDisplay / 1000, 2)}s`;

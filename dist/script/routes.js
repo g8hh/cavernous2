@@ -59,11 +59,14 @@ class BaseRoute {
 class Route extends BaseRoute {
     constructor(base) {
         super();
+        this.manaDrain = 0;
         if (base instanceof MapLocation) {
             this.x = base.x;
             this.y = base.y;
             this.zone = currentZone;
             this.realm = currentRealm;
+            this.manaDrain = zones[currentZone].manaDrain;
+            console.log(this.manaDrain);
             let route = queues.map((r, i) => (clones[i].x == this.x && clones[i].y == this.y) ? queueToStringStripped(r) : queueToString(r));
             route = route.filter(e => e.length);
             if (route.every((e, i, a) => e == a[0])) {
@@ -82,7 +85,7 @@ class Route extends BaseRoute {
             this.clonesLost = clones.filter(c => c.x != this.x || c.y != this.y).length;
             let mana = getStat("Mana");
             let expectedMul = getAction("Collect Mana").getBaseDuration(this.realm);
-            let duration = mineManaRockCost(0, base.completions + base.priorCompletions, base.zone, this.x, this.y) * expectedMul;
+            let duration = mineManaRockCost(base) * expectedMul;
             this.manaUsed = +(mana.base - mana.current).toFixed(2);
             this.reachTime = +(queueTime / 1000).toFixed(2);
             this.progressBeforeReach = duration - base.remainingPresent / 1000 * expectedMul;
@@ -100,8 +103,8 @@ class Route extends BaseRoute {
     }
     getRefineCost(relativeLevel = 0) {
         let loc = getMapLocation(this.x, this.y, false, this.zone);
-        let mul = getAction("Collect Mana").getBaseDuration(this.realm);
-        return mineManaRockCost(0, loc.completions + loc.priorCompletionData[this.realm] + relativeLevel, loc.zone, this.x, this.y, this.realm) * mul;
+        let mul = getAction("Collect Mana").getBaseDuration(this.realm) * (1 + this.manaDrain);
+        return mineManaRockCost(loc, this.realm, loc.completions + loc.priorCompletionData[this.realm] + relativeLevel) * mul;
     }
     estimateRefineManaLeft(ignoreInvalidate = false) {
         let est = 5 + zones.reduce((a, z, i) => {
@@ -239,7 +242,7 @@ function updateGrindStats() {
         .filter(r => !r.locked || r.name == "Core Realm")
         .map((r, realm_i) => zones
         .filter(z => z.mapLocations.flat().length)
-        .map((z, zone_i) => routes.filter(t => t.zone == zone_i && t.realm == realm_i && t.invalidateCost).length));
+        .map((z, zone_i) => routes.filter(t => t.zone == zone_i && t.realm == realm_i && t.invalidateCost && !t.allDead).length));
     const header = document.querySelector("#grind-stats-header");
     const body = document.querySelector("#grind-stats");
     const footer = document.querySelector("#grind-stats-footer");

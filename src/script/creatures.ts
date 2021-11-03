@@ -16,7 +16,8 @@ let baseCreatures = [
 	new BaseCreature('Goblin', 5, 0, 12),
 	new BaseCreature('Goblin Chieftain', 7, 3, 20),
 	new BaseCreature('Skeleton', 5, 5, 50),
-	new BaseCreature('Goblin Champion', 15, 8, 50)
+	new BaseCreature('Goblin Champion', 15, 8, 50),
+	new BaseCreature('Golem', 15, 15, 50),
 ];
 
 class Creature {
@@ -43,7 +44,7 @@ class Creature {
 	}
 }
 
-function getCreature(search:string | [number,number]) {
+function getCreature(search:string | [number, number]) {
 	if (typeof search == 'string') {
 		return baseCreatures.find(a => a.name == search);
 	} else {

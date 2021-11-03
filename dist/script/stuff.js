@@ -1,6 +1,6 @@
 "use strict";
 class Stuff {
-    constructor(name, icon, description, colour, count = 0, effect) {
+    constructor(name, icon, description, colour, count = 0, effect = null) {
         this.name = name;
         this.icon = icon;
         this.description = description;
@@ -8,18 +8,16 @@ class Stuff {
         this.count = count;
         this.node = null;
         this.min = 0;
-        if (effect) {
-            this.effect = effect;
-        }
+        this.effect = effect;
     }
-    effect(newCount) { }
     update(newCount = 0) {
         if (!this.node)
             this.createNode();
         this.count += newCount;
         // Ensure we never have 0.9999989 gold.
         this.count = Math.round(this.count * 100) / 100;
-        this.effect(newCount);
+        if (this.effect !== null)
+            this.effect(newCount);
         // Check if the number is an integer - if it's not, display one decimal place.
         this.node.innerText = writeNumber(this.count, Math.abs(Math.round(this.count) - this.count) < 0.01 ? 0 : 1);
         if (this.count > 0) {
@@ -76,7 +74,7 @@ function calcCombatStats() {
 }
 function getStatBonus(name, amount) {
     let stat = getStat(name);
-    return (mult) => stat.getBonus(amount * mult);
+    return (mult) => stat.getBonus(Math.floor(amount + 0.01) * mult);
 }
 const stuff = [
     new Stuff("Gold Nugget", "•", "This is probably pretty valuable.  Shiny!", "#ffd700", 0),

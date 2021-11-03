@@ -219,7 +219,7 @@ interface saveGame {
 		queues: string[][];
 		routes: ZoneRoute[];
 		goal: boolean;
-		challenge?:boolean //prior to 2.0.6
+		challenge?: boolean; //prior to 2.0.6
 	}[];
 	currentRealm: number;
 	cloneData: {
@@ -244,6 +244,7 @@ interface saveGame {
 		name: anyRuneName;
 		upgradeCount: number;
 	}[];
+	machines: number[];
 }
 
 let save = function save() {
@@ -251,7 +252,7 @@ let save = function save() {
 	const playerStats = stats.map(s => {
 		return {
 			name: s.name,
-			base: s.base
+			base: s.base,
 		};
 	});
 	const zoneData = zones.map(zone => {
@@ -267,31 +268,25 @@ let save = function save() {
 		return {
 			name: zone.name,
 			locations: zoneLocations,
-			queues: zone.queues
-				? zone.queues.map(queue => {
-						return queue.map(q => {
-							return q.actionID;
-						});
-				  })
-				: [[]],
+			queues: zone.queues ? zone.queues.map(queue => queue.map(q => q.actionID)) : [[]],
 			routes: zone.routes,
-			goal: zone.goalComplete
+			goal: zone.goalComplete,
 		};
 	});
 	const cloneData = {
-		count: clones.length
+		count: clones.length,
 	};
 	const stored = savedQueues.map((q: any) => {
 		return {
 			queue: q,
 			name: q.name,
 			icon: possibleActionIcons.indexOf(q.icon),
-			colour: q.colour
+			colour: q.colour,
 		};
 	});
 	const time = {
 		saveTime: Date.now(),
-		timeBanked
+		timeBanked,
 	};
 	const messageData = messages.map(m => [m.name, m.displayed] as [typeof m["name"], boolean]);
 	const savedRoutes = JSON.parse(
@@ -312,6 +307,7 @@ let save = function save() {
 			upgradeCount: r.upgradeCount
 		};
 	});
+	const machines = realms.map(r => r.machineCompletions);
 
 	let saveGame: saveGame = {
 		version: version,
@@ -325,7 +321,8 @@ let save = function save() {
 		settings: settings,
 		routes: savedRoutes,
 		grindRoutes: savedGrindRoutes,
-		runeData: runeData
+		runeData: runeData,
+		machines: machines,
 	};
 	let saveString = JSON.stringify(saveGame);
 	// Typescript can't find LZString, and I don't care.
@@ -380,6 +377,7 @@ function load() {
 	}
 	for (let i = 0; i < realms.length; i++) {
 		currentRealm = i;
+		realms[i].machineCompletions = (saveGame.machines || [])[i] || 0;
 		recalculateMana();
 	}
 	clones = [];

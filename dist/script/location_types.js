@@ -37,7 +37,7 @@ function getNextActivateCost() {
     return `${realms[currentRealm].getNextActivateAmount()} gold`;
 }
 function startCollectManaCost(completions, priorCompletions, zone, x, y) {
-    return `${writeNumber(this.presentAction ? this.presentAction.getProjectedDuration(mineManaRockCost(completions, priorCompletions, zone, x, y)) / 1000 : -1, 2)}s`;
+    return `${writeNumber(this.presentAction ? this.presentAction.getProjectedDuration(getMapLocation(x, y, false, zone.index)) / 1000 : -1, 2)}s`;
 }
 function getLocationType(name) {
     return locationTypes.find(a => a.name == name);
@@ -54,7 +54,7 @@ const locationTypes = [
     new LocationType("Salt", "░", "A wall of rock salt.  It only takes so long to mine it because you want to sort out the salt and not carry a ton of gravel with you.", "Mine Salt", null, null),
     new LocationType("Mana-infused Rock", "¤", "A whole bunch of rock.  But this time, it glows!", "Mine", "Collect Mana", storeCompletions, startCollectManaCost),
     new LocationType("Mana Spring", "*", "Pure mana, flowing out of the rock.  Each time you absorb the mana, the cost to do so next time increases.", "Walk", "Collect Mana", storeCompletions, startCollectManaCost),
-    new LocationType("Strange Machine", "♥", "A strange machine labelled '{'0':'Clone Machine','1':'Rune Enhancer','2':'Rune Enhancer'}'.  What could it do?", "Walk", "Activate Machine", null, getNextActivateCost),
+    new LocationType("Strange Machine", "♥", "A strange machine labelled '{'0':'Clone Machine','1':'Rune Enhancer','2':'Rune Enhancer','3':'Time Stretcher'}'.  What could it do?", "Walk", "Activate Machine", null, getNextActivateCost),
     new LocationType("Vaporizer", "=", "A machine for extracting the magic right out of gold. ({MANA_PER_GOLD} mana per gold)", "Walk", "Turn Gold to Mana", null),
     new LocationType("Fountain", "^", "A healing fountain, activated by the runes around its base.", "Walk", "Heal", null, null, undefined, false),
     new LocationType("Bottomless Pit", " ", "A bottomless pit.", "Cross Pit", null, null),
@@ -63,6 +63,7 @@ const locationTypes = [
     new LocationType("Goblin Chieftain", "c", "This one is uglier than the last two.  Probably meaner, too.\n{STATS}", "Attack Creature", null, null),
     new LocationType("Goblin Champion", "m", "The largest of the goblins.  You're going to have to work hard to take him down.\n{STATS}", "Attack Creature", null, null),
     new LocationType("Skeleton", "s", "An undead.  It's not very dangerous, but it is resilient.\n{STATS}", "Attack Creature", null, null),
+    new LocationType("Golem", "G", "A towering golem made out of finely crafted stone.  There aren't even any chinks in its armour!\n{STATS}", "Attack Creature", null, null),
     new LocationType("Weaken Rune", "W", "Weakens adjacent creatures.", "Walk", null, null),
     new LocationType("Wither Rune", "H", "This rune kills plants next to it.", "Walk", null, null),
     new LocationType("Teleport To Rune", "T", "This rune allows someone or something to come through from another place.", "Walk", null, null),
@@ -97,5 +98,7 @@ const locationTypes = [
     new LocationType("Sword Enchanter", "|", "An anvil on which you can enchant a steel sword using {'0':5,'1':10} gems.", "Walk", "Enchant Sword", null),
     new LocationType("Shield Enchanter", "<", "An anvil on which you can enchant a steel shield using {'0':5,'1':10} gems.", "Walk", "Enchant Shield", null),
     new LocationType("Armour Enchanter", ">", "An anvil on which you can enchant a steel suit of armour using {'0':5,'1':10} gems.", "Walk", "Enchant Armour", null),
+    new LocationType("Timelike Barrier", "1", "A wall made of a strange energy that saps your mana.", "Enter Barrier", null, null),
+    new LocationType("Timelike Barrier", "2", "A wall made of a strange energy that saps your mana.", "Enter Barrier", null, null),
 ];
 //# sourceMappingURL=location_types.js.map
