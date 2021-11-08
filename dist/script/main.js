@@ -12,11 +12,11 @@ function getNextAction(clone = currentClone) {
     const action = queues[clone][index];
     if (!action)
         return [undefined, index];
-    if (action[0][0] == "Q" && action[2].length == 0) {
-        // If there are no actions in the saved queue, skip it.
-        action[1] = false;
-        return getNextAction(clone);
-    }
+    // if (action[0][0] == "Q" && action[2].length == 0) {
+    // 	// If there are no actions in the saved queue, skip it.
+    // 	action[1] = false;
+    // 	return getNextAction(clone);
+    // }
     action.setCaller(clone, index);
     return [action, index];
 }
@@ -81,8 +81,11 @@ function resetLoop() {
         s.reset();
         s.update();
     });
-    if (settings.grindMana && routes) {
+    if (settings.grindMana && routes.length) {
         Route.loadBestRoute();
+    }
+    if (settings.grindStats && grindRoutes.length) {
+        GrindRoute.loadBestRoute();
     }
     stuff.forEach(s => {
         s.count = 0;
@@ -127,6 +130,7 @@ function resetLoop() {
     }
     setStartData();
 }
+/********************************************* Loop Log *********************************************/
 let loopActions = {};
 let loopStatStart = [];
 let loopLogVisible = false;
@@ -500,8 +504,8 @@ setInterval(function mainLoop() {
         if (timeBanked <= 0)
             timeBanked = 0;
     }
-    else if (!isNaN((time - timeUsed) / 2)) {
-        timeBanked += (time - timeUsed) / 2;
+    else if (!isNaN(time - timeUsed)) {
+        timeBanked += time - timeUsed;
     }
     if (timeLeft > 0.001 && ((settings.autoRestart == 1 && !clones.every(c => c.isPausing)) || settings.autoRestart == 2)) {
         resetLoop();
@@ -552,7 +556,7 @@ const keyFunctions = {
         addActionToQueue("B");
     },
     "^Backspace": () => {
-        if (!selectedQueue.every(e => zones[displayZone].queues[e].length == 0)) {
+        if (!selectedQueues.every(e => zones[displayZone].queues[e.clone].length == 0)) {
             clearQueue(null, !settings.warnings);
             return;
         }
@@ -573,6 +577,9 @@ const keyFunctions = {
     "KeyS": () => {
         if (settings.useWASD) {
             addActionToQueue("D");
+        }
+        else {
+            toggleGrindStats();
         }
     },
     "KeyD": () => {
@@ -607,11 +614,11 @@ const keyFunctions = {
         toggleLoadPrereqs();
     },
     "Tab": (e) => {
-        selectClone((selectedQueue[selectedQueue.length - 1] + 1) % clones.length);
+        selectClone((selectedQueues[selectedQueues.length - 1].clone + 1) % clones.length);
         e.stopPropagation();
     },
     ">Tab": (e) => {
-        selectClone((clones.length + selectedQueue[selectedQueue.length - 1] - 1) % clones.length);
+        selectClone((clones.length + selectedQueues[selectedQueues.length - 1].clone - 1) % clones.length);
         e.stopPropagation();
     },
     "^KeyA": () => {
@@ -623,9 +630,14 @@ const keyFunctions = {
             toggleAutoRestart();
         }
     },
+    "KeyT": () => {
+        if (settings.useWASD) {
+            toggleGrindStats();
+        }
+    },
     "End": () => {
-        cursor[1] = null;
-        showCursor();
+        selectedQueues.forEach(q => q.pos = null);
+        showCursors();
     },
     "Digit1": () => {
         addRuneAction(0, "rune");
@@ -693,7 +705,13 @@ const keyFunctions = {
     "Period": () => {
         addActionToQueue(".");
     },
+    "Comma": () => {
+        addActionToQueue(",");
+    },
     ">Semicolon": () => {
+        addActionToQueue(":");
+    },
+    "Semicolon": () => {
         addActionToQueue(":");
     },
     "KeyF": () => {

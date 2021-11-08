@@ -255,6 +255,7 @@ function setMined(x: number, y: number, icon?: string) {
 		"%": ".",
 		" ": ".",
 		"g": ".",
+		"G": ".",
 		"○": ".",
 		"c": ".",
 		"§": ".",
@@ -304,7 +305,7 @@ function viewCell(target:HTMLElement) {
 					description = description.replace("{STATS}", statsDesc);
 				}
 				if (description.includes("{MANA_PER_GOLD}")){
-					description = description.replace("{MANA_PER_GOLD}", writeNumber(5 * getRealmMult("Verdant Realm", true), 4));
+					description = description.replace("{MANA_PER_GOLD}", writeNumber(GOLD_VALUE * getRealmMult("Verdant Realm", true), 4));
 				}
 				let match = description.match(/\{.*\}/)
 				if (match) {

@@ -167,10 +167,11 @@ class Zone {
                     return h;
                 return Math.max(h + r.cloneHealth[i][1], 0) + r.cloneHealth[0][0];
             });
-            let result = [r, r.require, health];
+            let effectiveMana = r.mana + (Math.floor(r.stuff.find(s => s.name == "Gold Nugget")?.count || 0) * (GOLD_VALUE * getRealmMult("Verdant Realm", true) - 1 / clones.length));
+            let result = [r, r.require, health, effectiveMana];
             return result;
         });
-        return routeOptions.sort((a, b) => b[0].mana - a[0].mana);
+        return routeOptions.sort((a, b) => b[3] - a[3]);
     }
     enterZone() {
         this.display();
@@ -182,6 +183,10 @@ class Zone {
             currentActiveZone.classList.remove("active-zone");
         zoneSelect.children[currentZone].classList.add("active-zone");
         if (this.name == "Zone 2" && getMessage("Enter New Zone").display()) {
+            if (settings.running)
+                toggleRunning();
+        }
+        if (this.name == "Zone 7" && getMessage("Game Slowdown").display()) {
             if (settings.running)
                 toggleRunning();
         }
@@ -245,7 +250,7 @@ class Zone {
         this.node.onclick = () => {
             document.querySelector("#zone-name").innerHTML = this.name;
             displayZone = zones.findIndex(z => z.name == this.name);
-            maybeClearCursor();
+            clearCursors();
             isDrawn = false;
             mapDirt = [];
             mapStain = [];
@@ -279,7 +284,7 @@ class Zone {
                 displayStuff(routeNode, this.routes[i]);
                 routeNode.onclick = () => {
                     this.routes[i].loadRoute(this);
-                    parent.querySelectorAll(".active").forEach(node => node.classList.remove("active"));
+                    parent.querySelectorAll("div.active").forEach(node => node.classList.remove("active"));
                     routeNode.classList.add("active");
                 };
                 routeNode.querySelector(".delete-route-inner").onclick = this.deleteRoute.bind(this, i);
@@ -289,6 +294,19 @@ class Zone {
                 }
                 parent.appendChild(routeNode);
             }
+            let foot = document.createElement("h4");
+            foot.innerHTML = "Legend:";
+            parent.appendChild(foot);
+            let leg1 = document.createElement("h4");
+            leg1.classList.add("route-legend");
+            leg1.classList.add("active");
+            leg1.innerHTML = "Active";
+            parent.appendChild(leg1);
+            let leg2 = document.createElement("h4");
+            leg2.classList.add("route-legend");
+            leg2.classList.add("unused");
+            leg2.innerHTML = "Unused";
+            parent.appendChild(leg2);
             this.routesChanged = false;
         }
         this.displaySelectedRoute();
@@ -299,7 +317,7 @@ class Zone {
         let parent = this.node.querySelector(".routes");
         if (parent === null)
             throw new Error("Routes element not found");
-        parent.querySelectorAll(".active").forEach(node => node.classList.remove("active"));
+        parent.querySelectorAll("div.active").forEach(node => node.classList.remove("active"));
         let currentRoute = (this.queues + "").replace(/(^|,)(.*?),\2(,|$)/, "$1");
         this.routes
             .filter(r => r.realm == currentRealm)
@@ -330,7 +348,13 @@ class Zone {
     tick(time) {
         // Optimize by keeping a list of watery locations?
         this.mapLocations.forEach(row => row.forEach(loc => loc.zoneTick(time)));
-        getStat("Mana").spendMana(time * this.manaDrain * getStat("Chronomancy").value / 1000);
+        if (this.manaDrain) {
+            let drainValue = time * this.manaDrain * getStat("Chronomancy").value;
+            getStat("Mana").spendMana(drainValue / 1000);
+            if (!loopActions["Barrier Drain"])
+                loopActions["Barrier Drain"] = 0;
+            loopActions["Barrier Drain"] += drainValue * clones.length;
+        }
     }
 }
 function markRoutesChanged() {
@@ -347,7 +371,7 @@ function moveToZone(zone, complete = true) {
     zones[currentZone].exitZone(complete);
     if (currentZone == displayZone && settings.followZone) {
         displayZone = zone;
-        maybeClearCursor();
+        clearCursors();
     }
     currentZone = zone;
     zones[zone].enterZone();

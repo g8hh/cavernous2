@@ -1,5 +1,5 @@
 "use strict";
-let finalLocation = null;
+let finalLocations = [];
 let hoverLocation = null;
 function showIntermediateLocation(event) {
     let queueNode = event.target.parentElement.parentElement;
@@ -28,9 +28,8 @@ function showLocationAfterSteps(index, queueNumber, isDraw = false, isHover = fa
         hoverLocation = target;
     }
     else {
-        finalLocation && finalLocation.classList.remove("final-location");
         target.classList.add("final-location");
-        finalLocation = target;
+        finalLocations.push(target);
     }
     if (!isDraw)
         viewCell(target);
@@ -74,11 +73,10 @@ function stopHovering() {
     hoverLocation = null;
 }
 function showFinalLocation(isDraw = false) {
-    if (selectedQueue[0] !== undefined) {
-        showLocationAfterSteps(zones[displayZone].queues[selectedQueue[0]].length - 1, selectedQueue[0], isDraw);
-    }
-    else if (finalLocation) {
-        finalLocation.classList.remove("final-location");
-    }
+    finalLocations.forEach(f => f.classList.remove("final-location"));
+    finalLocations = [];
+    selectedQueues.forEach(q => {
+        showLocationAfterSteps(zones[displayZone].queues[q.clone].length - 1, q.clone, isDraw);
+    });
 }
 //# sourceMappingURL=highlights.js.map

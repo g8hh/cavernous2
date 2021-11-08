@@ -9,6 +9,7 @@ class Clone {
 	startDamage: number = 0;
 	damage: number = 0;
 	minHealth: number = 0;
+	inCombat: boolean = true;
 	waiting: boolean | number = false;
 	noSync: boolean = false;
 	currentProgress: number = 0;
@@ -126,27 +127,21 @@ class Clone {
 
 	select(allowMultiple = false) {
 		if (!allowMultiple) {
-			for (const index of selectedQueue) {
-				if (index != this.id) clones[index].deselect();
+			for (const selection of selectedQueues) {
+				if (selection.clone != this.id) clones[selection.clone].deselect();
 			}
-			if (cursor[0] != this.id) {
-				cursor = [this.id, null];
-			}
-			selectedQueue = [this.id];
-		} else {
-			cursor = [0, null];
+			selectedQueues = selectedQueues.filter(e => e.clone == this.id);
 		}
 
 		(document.querySelector(`#queue${this.id}`) as HTMLElement).classList.add("selected-clone");
-		if (!selectedQueue.includes(this.id)) {
-			selectedQueue.push(this.id);
+		if (!selectedQueues.find(e => e.clone == this.id)) {
+			selectedQueues.push({clone: this.id, pos: null});
 		}
 	}
 
 	deselect() {
 		(document.querySelector(`#queue${this.id}`) as HTMLElement).classList.remove("selected-clone");
-		if (cursor[0] == this.id) cursor[1] = null;
-		selectedQueue = selectedQueue.filter(e => e != this.id);
+		selectedQueues = selectedQueues.filter(e => e.clone != this.id);
 	}
 
 	completeNextAction(force: boolean = false) {
@@ -248,6 +243,9 @@ class Clone {
 		if (actionToDo == ".") {
 			return [this.walkTime || 100, null, null];
 		}
+		if (actionToDo == ",") {
+			return [this.walkTime || settings.longWait, null, null];
+		}
 		if (actionToDo == "=") {
 			if (
 				!this.waiting ||
@@ -278,7 +276,7 @@ class Clone {
 		const location = getMapLocation(x, y);
 		if (location === null) throw new Error("Location not found");
 		if (actionToDo[0] == "N" &&
-			runes[parseInt(actionToDo[1])].isInscribable() === false &&
+			runes[parseInt(actionToDo[1])].isInscribable() === CanStartReturnCode.NotNow &&
 			!runesTiles.includes(zones[currentZone].map[y + zones[currentZone].yOffset][x + zones[currentZone].xOffset])
 		) {
 			return [Infinity, null, null];
@@ -393,11 +391,13 @@ class Clone {
 			this.addToTimeline({ name: "Wait" }, initialTime);
 			return 0;
 		}
-		if (actionToDo == "."){
-			if (!this.walkTime) this.walkTime = 100;
+		if (actionToDo == "." || actionToDo == ","){
+			const waitAction = getAction(actionToDo == "." ? "Wait" : "Long Wait");
+			const waitActionDuration = (typeof waitAction.baseDuration == "function" ? waitAction.baseDuration() : waitAction.baseDuration);
+			if (!this.walkTime) this.walkTime = waitActionDuration;
 			let waitTime = Math.min(time, this.walkTime);
 			getAction("Wait")!.tick(waitTime);
-			this.selectQueueAction(actionIndex, 100 - this.walkTime);
+			this.selectQueueAction(actionIndex, 100 - (this.walkTime / waitActionDuration * 100));
 			if (!this.walkTime) this.completeNextAction();
 			this.addToTimeline({name: "Wait"}, waitTime);
 			return time - waitTime;
@@ -434,7 +434,7 @@ class Clone {
 		}
 		let percentRemaining;
 		[time, percentRemaining] = location.tick(time);
-		this.selectQueueAction(actionIndex, 100 - percentRemaining * 100);
+		if (initialTime - time > 5 || !percentRemaining) this.selectQueueAction(actionIndex, 100 - percentRemaining * 100);
 		this.currentProgress = location.remainingPresent;
 		if (!percentRemaining) {
 			this.completeNextAction();
@@ -542,7 +542,7 @@ function selectClone(target: HTMLElement | number, event?: MouseEvent) {
 	if (target instanceof HTMLElement) {
 		const index = +target.id.replace("queue", "");
 		if (event && (event.ctrlKey || event.metaKey)) {
-			if (selectedQueue.includes(index)) {
+			if (selectedQueues.find(e => e.clone == index)) {
 				clones[index].deselect();
 			} else {
 				clones[index].select(true);
@@ -554,7 +554,7 @@ function selectClone(target: HTMLElement | number, event?: MouseEvent) {
 		clones[target].select();
 	}
 
-	showCursor();
+	showCursors();
 	showFinalLocation();
 }
 
