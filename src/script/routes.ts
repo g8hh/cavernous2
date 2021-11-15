@@ -123,7 +123,7 @@ class Route extends BaseRoute {
 			return i > this.zone ? a : a + z.cacheManaGain[this.realm]
 		}, 0);
 		est = est - this.manaUsed - (this.getRefineCost() - this.progressBeforeReach) / (clones.length - this.clonesLost);
-		return !ignoreInvalidate && this.invalidateCost ? est + 1000 : est;
+		return !ignoreInvalidate && this.invalidateCost ? est + 1e7 : est;
 	}
 
 	estimateRefineTimes() {
@@ -254,21 +254,21 @@ function loadRoute(){
 
 function updateGrindStats(){
 	let rockCounts = realms
-	  .filter(r => !r.locked || r.name == "Core Realm")
+	  .filter(r => (!r.locked && !r.completed) || r.name == "Core Realm")
 	  .map((r, realm_i) => zones
 	    .filter(z => z.mapLocations.flat().length)
 	    .map((z, zone_i) => routes
 	      .filter(t => t.zone == zone_i && t.realm == realm_i)
 	      .reduce((a, t) => a + (t.allDead ? 0.000005 : t.loadingFailed ? 0.005 : t.estimateRefineTimes()), 0)));
 	let reachedCounts = realms
-	  .filter(r => !r.locked || r.name == "Core Realm")
+	  .filter(r => (!r.locked && !r.completed) || r.name == "Core Realm")
 	  .map((r, realm_i) => zones
 	    .filter(z => z.mapLocations.flat().length)
 	    .map((z, zone_i) =>
 	      z.mapLocations.flat().filter(l => l.type.name == "Mana-infused Rock").length !=
 	      routes.filter(t => t.zone == zone_i && t.realm == realm_i).length));
 	let revisitCounts = realms
-	  .filter(r => !r.locked || r.name == "Core Realm")
+	  .filter(r => (!r.locked && !r.completed) || r.name == "Core Realm")
 	  .map((r, realm_i) => zones
 	    .filter(z => z.mapLocations.flat().length)
 	    .map((z, zone_i) =>
