@@ -60,11 +60,13 @@ class Action {
             duration -= applyWither;
         }
         duration *= this.getSkillDiv();
-        if (realms[currentRealm].name == "Long Realm") {
-            duration *= 3;
-        }
-        else if (realms[currentRealm].name == "Compounding Realm") {
-            duration *= 1 + loopCompletions / 40;
+        if (!useDuration) {
+            if (realms[currentRealm].name == "Long Realm") {
+                duration *= 3;
+            }
+            else if (realms[currentRealm].name == "Compounding Realm") {
+                duration *= 1 + loopCompletions / 40;
+            }
         }
         return duration;
     }
@@ -288,9 +290,12 @@ function tickFight(usedTime, creature, baseTime) {
     if (creature.defense >= getStat("Attack").current && creature.attack <= getStat("Defense").current) {
         damage = baseTime / 1000;
     }
+    spreadDamage(damage);
+    clones[currentClone].inCombat = true;
+}
+function spreadDamage(damage) {
     const targetClones = clones.filter(c => c.x == clones[currentClone].x && c.y == clones[currentClone].y && c.damage < Infinity);
     targetClones.forEach(c => c.takeDamage(damage / targetClones.length));
-    clones[currentClone].inCombat = true;
 }
 let combatTools = [
     [getStuff("Iron Axe"), 0.01, getStat("Woodcutting")],
@@ -396,17 +401,17 @@ function tickWither(usedTime, { x, y }) {
     y += zones[currentZone].yOffset;
     const wither = getRune("Wither");
     const adjacentPlants = [
-        "♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        "♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
     ].filter((p) => p !== null);
     if (wither.upgradeCount > 0) {
         adjacentPlants.push(...[
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
         ].filter((p) => p !== null));
     }
     adjacentPlants.forEach(loc => {
@@ -422,17 +427,17 @@ function completeWither(x, y) {
     x += zones[currentZone].xOffset;
     y += zones[currentZone].yOffset;
     const adjacentPlants = [
-        "♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        "♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
     ].filter(p => p);
     if (getRune("Wither").upgradeCount > 0) {
         adjacentPlants.push(...[
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
         ].filter(p => p));
     }
     if (!adjacentPlants.length)
@@ -448,17 +453,17 @@ function predictWither(location) {
     y += zones[currentZone].yOffset;
     const wither = getRune("Wither");
     const adjacentPlants = [
-        "♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-        "♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-        "♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+        shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+        shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+        shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
     ].filter((p) => p !== null);
     if (wither.upgradeCount > 0) {
         adjacentPlants.push(...[
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-            "♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+            shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+            shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+            shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
         ].filter((p) => p !== null));
     }
     if (!adjacentPlants.length)
@@ -477,15 +482,15 @@ function getChopTime(base, increaseRate) {
     return () => base + increaseRate * queueTime * (realms[currentRealm].name == "Verdant Realm" ? 5 : 1);
 }
 function tickSpore(usedTime, creature, baseTime) {
-    clones[currentClone].takeDamage(baseTime / 1000);
+    spreadDamage(baseTime / 1000);
 }
 function completeBarrier(x, y) {
     zones[currentZone].manaDrain += 5;
     completeMove(x, y);
 }
 function startBarrier(location) {
-    location = getMapLocation(location.x, location.y, true);
-    if (getRealm("Compounding Realm").machineCompletions >= +location.baseType.symbol)
+    let barrierNumber = +zones[currentZone].map[location.y + zones[currentZone].yOffset][location.x + zones[currentZone].xOffset];
+    if (!isNaN(barrierNumber) && getRealm("Compounding Realm").machineCompletions >= barrierNumber)
         return CanStartReturnCode.Now;
     return CanStartReturnCode.Never;
 }

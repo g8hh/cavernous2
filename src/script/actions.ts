@@ -78,10 +78,12 @@ class Action<actionName extends anyActionName = anyActionName> {
 			duration -= applyWither;
 		}
 		duration *= this.getSkillDiv();
-		if (realms[currentRealm].name == "Long Realm") {
-			duration *= 3;
-		} else if (realms[currentRealm].name == "Compounding Realm") {
-			duration *= 1 + loopCompletions / 40;
+		if (!useDuration){
+			if (realms[currentRealm].name == "Long Realm") {
+				duration *= 3;
+			} else if (realms[currentRealm].name == "Compounding Realm") {
+				duration *= 1 + loopCompletions / 40;
+			}
 		}
 		return duration;
 	}
@@ -315,11 +317,14 @@ function tickFight(usedTime: number, creature: Creature, baseTime: number) {
 	if (creature.defense >= getStat("Attack").current && creature.attack <= getStat("Defense").current) {
 		damage = baseTime / 1000;
 	}
-	const targetClones = clones.filter(c => c.x == clones[currentClone].x && c.y == clones[currentClone].y && c.damage < Infinity);
-	targetClones.forEach(c => c.takeDamage(damage / targetClones.length));
+	spreadDamage(damage);
 	clones[currentClone].inCombat = true;
 }
 
+function spreadDamage(damage: number){
+	const targetClones = clones.filter(c => c.x == clones[currentClone].x && c.y == clones[currentClone].y && c.damage < Infinity);
+	targetClones.forEach(c => c.takeDamage(damage / targetClones.length));
+}
 
 let combatTools: [Stuff<anyStuffName>, number, Stat<anyStatName>][] = [
 	[getStuff("Iron Axe"), 0.01, getStat("Woodcutting")],
@@ -439,18 +444,18 @@ function tickWither(usedTime: number, { x, y }:Creature) {
 	y += zones[currentZone].yOffset;
 	const wither = getRune("Wither");
 	const adjacentPlants = [
-		"♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-		"♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+		shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+		shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
 	].filter((p): p is NonNullable<typeof p> => p !== null);
 	if (wither.upgradeCount > 0) {
 		adjacentPlants.push(
 			...[
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+				shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+				shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
 			].filter((p): p is NonNullable<typeof p> => p !== null)
 		);
 	}
@@ -468,18 +473,18 @@ function completeWither(x: number, y: number) {
 	x += zones[currentZone].xOffset;
 	y += zones[currentZone].yOffset;
 	const adjacentPlants = [
-		"♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-		"♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+		shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+		shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
 	].filter(p => p);
 	if (getRune("Wither").upgradeCount > 0) {
 		adjacentPlants.push(
 			...[
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+				shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+				shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
 			].filter(p => p)
 		);
 	}
@@ -495,18 +500,18 @@ function predictWither(location: MapLocation) {
 	y += zones[currentZone].yOffset;
 	const wither = getRune("Wither");
 	const adjacentPlants = [
-		"♣♠α§".includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
-		"♣♠α§".includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
-		"♣♠α§".includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
+		shrooms.includes(zones[currentZone].map[y - 1][x]) ? zones[currentZone].mapLocations[y - 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x - 1]) ? zones[currentZone].mapLocations[y][x - 1] : null,
+		shrooms.includes(zones[currentZone].map[y + 1][x]) ? zones[currentZone].mapLocations[y + 1][x] : null,
+		shrooms.includes(zones[currentZone].map[y][x + 1]) ? zones[currentZone].mapLocations[y][x + 1] : null
 	].filter((p): p is NonNullable<typeof p> => p !== null);
 	if (wither.upgradeCount > 0) {
 		adjacentPlants.push(
 			...[
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
-				"♣♠α§".includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
+				shrooms.includes(zones[currentZone].map[y - 1][x - 1]) ? zones[currentZone].mapLocations[y - 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x - 1]) ? zones[currentZone].mapLocations[y + 1][x - 1] : null,
+				shrooms.includes(zones[currentZone].map[y + 1][x + 1]) ? zones[currentZone].mapLocations[y + 1][x + 1] : null,
+				shrooms.includes(zones[currentZone].map[y - 1][x + 1]) ? zones[currentZone].mapLocations[y - 1][x + 1] : null
 			].filter((p): p is NonNullable<typeof p> => p !== null)
 		);
 	}
@@ -529,7 +534,7 @@ function getChopTime(base: number, increaseRate: number) {
 }
 
 function tickSpore(usedTime: number, creature: Creature, baseTime: number) {
-	clones[currentClone].takeDamage(baseTime / 1000);
+	spreadDamage(baseTime / 1000);
 }
 
 function completeBarrier(x: number, y: number) {
@@ -538,8 +543,8 @@ function completeBarrier(x: number, y: number) {
 }
 
 function startBarrier(location: MapLocation) {
-	location = getMapLocation(location.x, location.y, true)!;
-	if (getRealm("Compounding Realm").machineCompletions >= +location.baseType.symbol) return CanStartReturnCode.Now;
+	let barrierNumber = +zones[currentZone].map[location.y + zones[currentZone].yOffset][location.x + zones[currentZone].xOffset];
+	if (!isNaN(barrierNumber) && getRealm("Compounding Realm").machineCompletions >= barrierNumber) return CanStartReturnCode.Now;
 	return CanStartReturnCode.Never;
 }
 
