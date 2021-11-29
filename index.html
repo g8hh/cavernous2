@@ -201,6 +201,8 @@
 						1-5 to inscribe a rune<br />
 						Ctrl-backspace clears the whole queue<br />
 						Tab selects the next clone<br />
+						Ctrl-Left/Right to move within a queue<br />
+						Ctrl-Up/Down to reorder queues<br />
 						Shift-Tab selects the previous clone<br />
 						Ctrl-click selects multiple clones<br />
 						Ctrl-A selects all clones<br />
@@ -259,7 +261,7 @@
 				<a href="https://paypal.me/SamBenner" target="_blank">Paypal</a>
 				<a href="https://www.patreon.com/nucaranlaeg" target="_blank">Patreon</a>
 				<a href="https://discord.gg/EXAHXBr" target="_blank">Discord</a><br />
-				Version <span id="version">2.3.5</span><br />
+				Version <span id="version">2.3.6</span><br />
 				©2021
 			</div>
 		</div>
@@ -315,7 +317,7 @@
 				<div id="location-water"></div>
 				<button id="pathfind-button" onclick="keyFunctions.KeyF()">Pathfind Here (F)</button>
 				<div id="location-route">
-					<button id="route-button" class="button" onclick="loadRoute()">
+					<button id="route-button" class="button" onclick="loadRoute(true)">
 						Load best route to this rock
 						<input type="hidden" id="x-loc" />
 						<input type="hidden" id="y-loc" />

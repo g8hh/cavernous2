@@ -70,8 +70,9 @@ window.ondrop = e => e.preventDefault();
 
 let resetting = false;
 
-function resetLoop() {
+function resetLoop(noLoad = false) {
 	if (resetting) return;
+	shouldReset = false;
 	resetting = true;
 	const mana = getStat("Mana");
 	if (getMessage("Time Travel").display(zones[0].manaGain == 0 && realms[currentRealm].name == "Core Realm")) setSetting(toggleAutoRestart, 3);
@@ -86,7 +87,7 @@ function resetLoop() {
 		s.reset();
 		s.update();
 	});
-	if (settings.grindMana && routes.length) {
+	if (settings.grindMana && routes.length && !noLoad) {
 		Route.loadBestRoute();
 	}
 	if (settings.grindStats && grindRoutes.length) {
@@ -460,6 +461,7 @@ function load() {
 		currentRealm = i;
 		realms[i].machineCompletions = (saveGame.machines || [])[i] || 0;
 		recalculateMana();
+		getRealmComplete(realms[i]);
 	}
 	saveGame.realmData?.forEach((r, i) => {
 		if (r.completed) realms[i].complete();
@@ -575,7 +577,6 @@ let shouldReset = false;
 setInterval(function mainLoop() {
 	if (shouldReset) {
 		resetLoop();
-		shouldReset = false;
 	}
 	const time = Date.now() - lastAction;
 	const mana = getStat("Mana");
@@ -763,6 +764,7 @@ const keyFunctions:{[key:string]:(event:KeyboardEvent)=>void} = {
 	"^KeyA": () => {
 		clones[0].select();
 		clones.slice(1).map(e => e.select(true));
+		selectedQueues.forEach(q => q.pos = null);
 	},
 	"KeyC": () => {
 		if (settings.useWASD) {
@@ -777,6 +779,64 @@ const keyFunctions:{[key:string]:(event:KeyboardEvent)=>void} = {
 	"End": () => {
 		selectedQueues.forEach(q => q.pos = null);
 		showCursors();
+	},
+	"Home": () => {
+		selectedQueues.forEach(q => q.pos = -1);
+		showCursors();
+	},
+	"^ArrowLeft": () => {
+		selectedQueues.forEach((q, i) => q.pos === null ? q.pos = zones[displayZone].queues[i].length - 2 : q.pos > -1 ? q.pos-- : null);
+		showCursors();
+	},
+	"^ArrowRight": () => {
+		selectedQueues.forEach((q, i) => q.pos === null ? null : q.pos == zones[displayZone].queues[i].length - 2 ? q.pos = null : q.pos++);
+		showCursors();
+	},
+	"^KeyW": () => {
+		if (!settings.useWASD) return;
+		let q = zones[displayZone].queues;
+		document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
+		for (let i = 1; i < clones.length; i++){
+			if (!selectedQueues.some(Q => Q.clone == i - 1) && selectedQueues.some(Q => Q.clone == i ? Q.clone-- + Infinity : false)){
+				[q[i], q[i-1]] = [q[i-1], q[i]];
+			}
+		}
+		selectedQueues.forEach(Q => clones[Q.clone].select(true));
+		redrawQueues();
+	},
+	"^ArrowUp": () => {
+		let q = zones[displayZone].queues;
+		document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
+		for (let i = 1; i < clones.length; i++){
+			if (!selectedQueues.some(Q => Q.clone == i - 1) && selectedQueues.some(Q => Q.clone == i ? Q.clone-- + Infinity : false)){
+				[q[i], q[i-1]] = [q[i-1], q[i]];
+			}
+		}
+		selectedQueues.forEach(Q => clones[Q.clone].select(true));
+		redrawQueues();
+	},
+	"^KeyS": () => {
+		if (!settings.useWASD) return;
+		let q = zones[displayZone].queues;
+		document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
+		for (let i = 1; i < clones.length; i++){
+			if (!selectedQueues.some(Q => Q.clone == i - 1) && selectedQueues.some(Q => Q.clone == i ? Q.clone-- + Infinity : false)){
+				[q[i], q[i-1]] = [q[i-1], q[i]];
+			}
+		}
+		selectedQueues.forEach(Q => clones[Q.clone].select(true));
+		redrawQueues();
+	},
+	"^ArrowDown": () => {
+		let q = zones[displayZone].queues;
+		document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
+		for (let i = clones.length - 2; i >= 0; i--){
+			if (!selectedQueues.some(Q => Q.clone == i + 1) && selectedQueues.some(Q => Q.clone == i ? Q.clone++ + Infinity : false)){
+				[q[i], q[i+1]] = [q[i+1], q[i]];
+			}
+		}
+		selectedQueues.forEach(Q => clones[Q.clone].select(true));
+		redrawQueues();
 	},
 	"Digit1": () => {
 		addRuneAction(0, "rune");
