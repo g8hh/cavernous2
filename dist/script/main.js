@@ -38,7 +38,7 @@ function redrawTimeNode() {
 window.ondrop = e => e.preventDefault();
 /** ****************************************** Prestiges ********************************************/
 let resetting = false;
-function resetLoop(noLoad = false) {
+function resetLoop(noLoad = false, saveGame = true) {
     if (resetting)
         return;
     shouldReset = false;
@@ -90,7 +90,8 @@ function resetLoop(noLoad = false) {
     getStat("Mana").dirty = true;
     getStat("Mana").update();
     drawMap();
-    save();
+    if (saveGame)
+        save();
     showFinalLocation();
     if (isNaN(timeBanked)) {
         timeBanked = 0;
@@ -234,7 +235,7 @@ const URLParams = new URL(document.location.href).searchParams;
 let saveName = URLParams.get("save") || "";
 saveName = `saveGameII${saveName && "_"}${saveName}`;
 const savingDisabled = URLParams.get("saving") == "disabled";
-let save = function save() {
+let save = async function save() {
     if (savingDisabled)
         return;
     const playerStats = stats.map(s => {
@@ -367,7 +368,6 @@ function load() {
         currentRealm = i;
         realms[i].machineCompletions = (saveGame.machines || [])[i] || 0;
         recalculateMana();
-        getRealmComplete(realms[i]);
     }
     saveGame.realmData?.forEach((r, i) => {
         if (r.completed)
@@ -383,6 +383,9 @@ function load() {
     }
     for (let i = 0; i < (saveGame.runeData || []).length; i++) {
         runes[i].upgradeCount = saveGame.runeData[i].upgradeCount || 0;
+    }
+    for (let i = 0; i < realms.length; i++) {
+        getRealmComplete(realms[i]);
     }
     loadSettings(saveGame.settings);
     zones[0].queues[0].selected = true;
@@ -411,7 +414,7 @@ function importGame() {
         return;
     save();
     // Disable saving until the next reload.
-    save = () => { };
+    save = async () => { };
     const temp = localStorage[saveName];
     localStorage[saveName] = saveString;
     try {
@@ -435,7 +438,7 @@ function displaySaveClick(event) {
 }
 /** ****************************************** Game loop ********************************************/
 let lastAction = Date.now();
-let timeBanked = 1e9;
+let timeBanked = 0;
 let queueTime = 0;
 let queuesNode;
 let queueTimeNode;
@@ -511,6 +514,7 @@ setInterval(function mainLoop() {
 }, Math.floor(1000 / fps));
 function runActions(time) {
     const mana = getStat("Mana");
+    let loops = 0;
     while (time > 0.001) {
         let actions = zones[currentZone].queues.map(q => q.getNextAction());
         const nullActions = actions.map((a, i) => a === null ? i : -1).filter(a => a > -1);
@@ -539,7 +543,17 @@ function runActions(time) {
             return time;
         }
         const instances = actions.map(a => a.currentAction);
-        const nextTickTime = Math.min(...instances.map(i => i.remainingDuration / instances.reduce((a, c) => a + +(c === i), 0)), time);
+        if (actions.some(a => a.currentAction?.expectedLeft === 0 && a.actionID == "T")) {
+            // If it's started and has nothing left, it's tried to start an action with no duration - like starting a Wither activation when it's complete.
+            actions.forEach(a => {
+                if (a.currentAction?.expectedLeft === 0 && a.actionID == "T")
+                    a.done = 3;
+            });
+            continue;
+        }
+        let nextTickTime = Math.min(...instances.map(i => i.expectedLeft / instances.reduce((a, c) => a + +(c === i), 0)), time);
+        if (nextTickTime < 0.01)
+            nextTickTime = 0.01;
         actions.forEach(a => a.tick(nextTickTime));
         nullActions.forEach(a => clones[a].addToTimeline({ name: clones[a].damage === Infinity ? "Dead" : "None" }, nextTickTime));
         waitActions.forEach(a => a.currentClone.addToTimeline({ name: "Wait" }, nextTickTime));

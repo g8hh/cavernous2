@@ -48,9 +48,9 @@ class MapLocation {
         return new ActionInstance(action, this, true);
     }
     getPresentAction() {
-        if (this.activePresent?.remainingDuration == 0)
+        if (this.activePresent?.remainingDuration == 0 && this.activePresent.startingDuration != 0)
             this.activePresent = null;
-        if (this.type.canWorkTogether) {
+        if (this.type.canWorkTogether || this.temporaryPresent) {
             if (this.activePresent !== null)
                 return this.activePresent;
             if (this.type.presentAction) {
@@ -66,9 +66,6 @@ class MapLocation {
         }
         if (this.type.presentAction) {
             return new ActionInstance(this.type.presentAction, this, false);
-        }
-        else if (this.temporaryPresent) {
-            return new ActionInstance(this.temporaryPresent, this, false);
         }
         else {
             return null;

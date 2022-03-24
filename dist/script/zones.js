@@ -79,7 +79,7 @@ class Zone {
         if (this.goalComplete)
             this.map = this.map.map(row => row.replace("√", "#"));
         let unlockedBarriers = getRealm("Compounding Realm").machineCompletions;
-        for (let i = 0; i < 3; i++) {
+        for (let i = 1; i <= 9; i++) {
             if (i > unlockedBarriers)
                 this.map = this.map.map(row => row.replace(i.toString(), "█"));
         }
@@ -154,6 +154,7 @@ class Zone {
     }
     sumRoute(require, startDamage, actionCount) {
         let routeOptions = this.routes
+            // .filter(r => !r.noValidPrior)
             .filter(r => r.realm == currentRealm)
             .filter(r => {
             let reqs = (require || []).map(s => {
@@ -415,13 +416,13 @@ const zones = [
         "█████████████████████",
         "███████+##+██████████",
         "██####% █████%███████",
-        "██%██#█##%█¢#♠♥██████",
-        "███###███¤██#███¤♣███",
-        "██+♠████%♠%█#╬███#███",
-        "█¤█+██.###♠=#⎶█☼█#███",
-        "█%##███#+█#+##█%##███",
-        "███###█¤██##█♠███+█¤█",
-        "███#█#██¤♠ ♠█++██#█■█",
+        "██%██#█##%█¢#♠♥████¤█",
+        "███###███¤██#███¤♣█╣█",
+        "██+♠████%♠%█#╬███#█╣█",
+        "█¤█+██.###♠=#⎶█☼█#█╣█",
+        "█%##███#+█#+##█%##█╣█",
+        "███###█¤██##█♠███+█╣█",
+        "███#█#██¤♠ ♠█++██#█╣█",
         "█#  █#████♠♣█████#█3█",
         "█♠███#████+♠♣♠██  2#█",
         "█♠%█#####+███♣1# ██#█",

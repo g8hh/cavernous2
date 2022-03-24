@@ -1,11 +1,18 @@
 "use strict";
+let actionIdCounter = 0;
 class ActionInstance {
     constructor(action, location, isMove) {
+        this.moved = false;
         this.appliedWither = 0;
+        this.id = actionIdCounter++; // Every ActionInstance gets a unique id!
         this.action = action;
         this.location = location;
         this.isMove = isMove;
         this.startingDuration = this.remainingDuration = 0;
+    }
+    get expectedLeft() {
+        const skillDiv = this.action.getSkillDiv();
+        return this.remainingDuration * skillDiv;
     }
     start(clone = null) {
         // We check for strict equality to true, so this.location is falsey when it matters.
@@ -23,8 +30,8 @@ class ActionInstance {
         this.action.tick(usedTime, this.location, usedTime * skillDiv, clone);
         this.remainingDuration -= usedTime;
         if (this.remainingDuration == 0) {
-            if (this.action.complete(this.location, clone)) {
-                this.start();
+            if (this.action.complete(this.location, clone, this)) {
+                this.start(clone);
             }
             else if (this.isMove) {
                 loopCompletions++;
@@ -115,10 +122,11 @@ class Action {
 function baseWalkLength() {
     return 100 * (realms[currentRealm].name == "Long Realm" ? 3 : 1);
 }
-function completeMove(loc, clone) {
+function completeMove(loc, clone, action) {
     clone.x = loc.x;
     clone.y = loc.y;
     setMined(loc.x, loc.y);
+    action.moved = true;
 }
 function completeMine(loc) {
     setMined(loc.x, loc.y);
@@ -165,7 +173,7 @@ function completeSaltMine(loc) {
     setMined(loc.x, loc.y);
 }
 function completeCollectMana(loc) {
-    Route.updateBestRoute(loc);
+    Route.updateBestRoute(loc, true);
     zones[currentZone].mineComplete();
     setMined(loc.x, loc.y, ".");
     if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana)
@@ -182,6 +190,12 @@ function longZoneCompletionMult(x, y, z) {
     if (location === null)
         throw new Error("Location not found");
     return 0.99 ** (location.priorCompletionData[1] ** 0.75);
+}
+function canMineMana(location) {
+    Route.updateBestRoute(location);
+    if (location.completions)
+        return CanStartReturnCode.Never;
+    return CanStartReturnCode.Now;
 }
 function mineManaRockCost(location, clone = null, realm = null, completionOveride) {
     return location.completions && !completionOveride
@@ -243,8 +257,8 @@ function simpleRequire(requirement, doubleExcempt = false) {
 function canMakeEquip(requirement, equipType) {
     function canDo() {
         const haveStuff = simpleRequire(requirement)();
-        if (haveStuff <= 0)
-            return haveStuff;
+        if (haveStuff == CanStartReturnCode.NotNow)
+            return CanStartReturnCode.NotNow;
         const itemCount = stuff.reduce((a, c) => a + (c.name.includes(equipType) ? c.count : 0), 0);
         if (itemCount >= clones.length)
             return CanStartReturnCode.Never;
@@ -279,14 +293,14 @@ function completeCrossPit(loc) {
     setMined(loc.x, loc.y);
     return false;
 }
-function completeCrossLava(loc, clone) {
+function completeCrossLava(loc, clone, action) {
     let bridge = getStuff("Steel Bridge");
     if (bridge.count < 1) {
         bridge = getStuff("Iron Bridge");
         if (bridge.count < 1 || !settings.useDifferentBridges)
             return true;
         bridge.update(-1);
-        completeMove(loc, clone);
+        completeMove(loc, clone, action);
         getMessage("Lava Can't Melt Steel Bridges").display();
         return;
     }
@@ -295,21 +309,20 @@ function completeCrossLava(loc, clone) {
     loc.entered = Infinity;
     return false;
 }
-function tickFight(usedTime, loc, baseTime) {
+function tickFight(usedTime, loc, baseTime, clone) {
     if (!loc.creature)
         throw new Error("No creature to fight");
     let damage = (Math.max(loc.creature.attack - getStat("Defense").current, 0) * baseTime) / 1000;
     if (loc.creature.defense >= getStat("Attack").current && loc.creature.attack <= getStat("Defense").current) {
         damage = baseTime / 1000;
     }
-    spreadDamage(damage, loc, true);
+    clone.inCombat = true;
+    spreadDamage(damage, clone);
 }
-function spreadDamage(damage, loc, combat = false) {
-    const targetClones = clones.filter(c => c.x == loc.x && c.y == loc.y && c.damage < Infinity);
+function spreadDamage(damage, clone) {
+    const targetClones = clones.filter(c => c.x == clone.x && c.y == clone.y && c.damage < Infinity);
     targetClones.forEach(c => {
         c.takeDamage(damage / targetClones.length);
-        if (combat)
-            c.inCombat = true;
     });
 }
 let combatTools = [
@@ -436,6 +449,7 @@ function tickWither(usedTime, loc) {
         loc.wither += usedTime * (wither.upgradeCount ? 2 ** (wither.upgradeCount - 1) : 1);
         if (loc.type.getEnterAction(loc.entered).getProjectedDuration(loc, loc.wither) <= 0) {
             setMined(loc.x, loc.y, ".");
+            loc.wither = 0;
             loc.entered = Infinity;
         }
     });
@@ -498,8 +512,8 @@ function completeGoal(loc) {
 function getChopTime(base, increaseRate) {
     return () => base + increaseRate * queueTime * (realms[currentRealm].name == "Verdant Realm" ? 5 : 1);
 }
-function tickSpore(usedTime, loc, baseTime) {
-    spreadDamage(baseTime / 1000, loc);
+function tickSpore(usedTime, loc, baseTime, clone) {
+    spreadDamage(baseTime / 1000, clone);
 }
 function completeBarrier(loc) {
     zones[currentZone].manaDrain += 5;
@@ -590,7 +604,7 @@ const actions = [
     new Action("Mine Salt", 50000, [["Mining", 1]], completeSaltMine),
     new Action("Mine Gem", 100000, [["Mining", 0.75], ["Gemcraft", 0.25]], completeMine),
     new Action("Collect Gem", 100000, [["Smithing", 0.1], ["Gemcraft", 1]], completeCollectGem, null, null, mineGemCost),
-    new Action("Collect Mana", 1000, [["Magic", 1]], completeCollectMana, null, tickCollectMana, mineManaRockCost),
+    new Action("Collect Mana", 1000, [["Magic", 1]], completeCollectMana, canMineMana, tickCollectMana, mineManaRockCost),
     new Action("Activate Machine", 1000, [], completeActivateMachine, startActivateMachine),
     new Action("Make Iron Bars", 5000, [["Smithing", 1]], simpleConvert([["Iron Ore", 1]], [["Iron Bar", 1]], true), simpleRequire([["Iron Ore", 1]], true)),
     new Action("Make Steel Bars", 15000, [["Smithing", 1]], simpleConvert([["Iron Bar", 1], ["Coal", 1]], [["Steel Bar", 1]], true), simpleRequire([["Iron Bar", 1], ["Coal", 1]], true)),
@@ -626,9 +640,11 @@ const actions = [
     new Action("Create Pick", 2500, [["Smithing", 1]], simpleConvert([["Iron Bar", 1]], [["Iron Pick", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Create Hammer", 2500, [["Smithing", 1]], simpleConvert([["Iron Bar", 1]], [["Iron Hammer", 1]]), simpleRequire([["Iron Bar", 1]])),
     new Action("Enter Barrier", 10000, [["Chronomancy", 1]], completeBarrier, startBarrier, null, barrierDuration),
-    new Action("Exit", 100000000, [["Mana", 0.1], ["Mining", 0.1], ["Woodcutting", 0.1], ["Magic", 0.1], ["Speed", 0.1], ["Smithing", 0.1], ["Runic Lore", 0.1], ["Combat", 0.1], ["Gemcraft", 0.1], ["Chronomancy", 0.1]], completeGame),
+    new Action("Exit", 50000000, [["Mining", 0.25], ["Woodcutting", 0.25], ["Magic", 0.25], ["Speed", 0.25], ["Smithing", 0.25], ["Runic Lore", 0.25], ["Combat", 0.25], ["Gemcraft", 0.25], ["Chronomancy", 0.25]], completeGame),
 ];
 function getAction(name) {
     return actions.find(a => a.name == name);
 }
+getAction("Wait").getDuration = getAction("Wait").getBaseDuration = getAction("Wait").getProjectedDuration = () => getAction("Wait").baseDuration;
+getAction("Long Wait").getDuration = getAction("Long Wait").getBaseDuration = getAction("Long Wait").getProjectedDuration = () => getAction("Long Wait").baseDuration();
 //# sourceMappingURL=actions.js.map

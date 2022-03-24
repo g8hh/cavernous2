@@ -52,7 +52,7 @@ class QueueAction {
                     else {
                         this.queue.displayActionProgress(0);
                     }
-                    this.lastProgress = percent;
+                    this.lastProgress = isNaN(percent) ? 0 : percent;
                 }
                 else {
                     this.node.style.backgroundSize = "100%";
@@ -167,6 +167,7 @@ class QueueAction {
                 // Someone else completed this action; this should have already been taken care of.
                 // We can still get here (if, for instance, it happens with an iron bridge onto lava), so no error.
                 // Try again with the action.
+                this.currentAction = null;
                 this.done = ActionStatus.NotStarted;
             }
             else {
@@ -185,8 +186,10 @@ class QueueAction {
             const targetY = this.currentClone.y + +(this.action == "D") - +(this.action == "U");
             if ("LURD".includes(this.action)
                 && (targetX != this.currentClone.x || targetY != this.currentClone.y)
+                && !this.currentAction.moved
                 && ".*©".includes(getOffsetCurrentMapTile(targetX, targetY))
                 && !["Walk", "Kudzu Chop"].includes(this.currentAction.action.name)) {
+                loopCompletions--;
                 const location = getMapLocation(targetX, targetY);
                 const actions = [];
                 clones.forEach((c, i) => {
@@ -202,7 +205,7 @@ class QueueAction {
                     }
                 });
                 if (actions.length > 1) {
-                    actions.forEach(a => a.remainingDuration = a.remainingDuration / actions.length);
+                    actions.forEach(a => a.remainingDuration = a.remainingDuration * (actions.length - 1) / actions.length);
                 }
                 else {
                     // Force complete of solo walk;
@@ -258,6 +261,8 @@ class QueuePathfindAction extends QueueAction {
             throw new Error("Pathfind action not initialized");
         if (this.cacheAction)
             return this.cacheAction;
+        if (this.done == ActionStatus.Complete)
+            return null;
         let originX = this.currentClone.x + zones[currentZone].xOffset, originY = this.currentClone.y + zones[currentZone].yOffset;
         // Do a simple search from the clone's current position to the target position.
         // Return the direction the clone needs to go next.
@@ -307,6 +312,14 @@ class QueuePathfindAction extends QueueAction {
         if (this.done != ActionStatus.Complete)
             this.done = ActionStatus.NotStarted;
     }
+    reset() {
+        this.done = ActionStatus.NotStarted;
+        this.lastProgress = 0;
+        this.cacheAction = null;
+        this.currentClone = null;
+        this.currentAction = null;
+        this.drawProgress();
+    }
 }
 class ActionQueue extends Array {
     constructor(index, ...items) {
@@ -315,6 +328,7 @@ class ActionQueue extends Array {
         this.queueNode = null;
         this.cursorNode = null;
         this.progressNode = null;
+        this.isScrolling = false;
         this.index = index;
         items.forEach(a => a.queue = this);
     }
@@ -354,6 +368,7 @@ class ActionQueue extends Array {
         else {
             this.node.parentElement.classList.remove("selected-clone");
         }
+        showFinalLocation();
     }
     static fromJSON(ar) {
         ar = this.migrate(ar);
@@ -419,11 +434,12 @@ class ActionQueue extends Array {
             return null;
         const nextAction = this.find(a => a.done != ActionStatus.Complete) || null;
         if (nextAction === null) {
-            const index = this.findIndex(a => a.action == "<");
+            const index = this.findIndex(a => a.actionID == "<");
             if (index > 0 && index < this.length - 1) {
                 for (let i = index; i < this.length; i++) {
                     this[i].done = ActionStatus.NotStarted;
                 }
+                clones[this.index].repeated = true;
                 return this.getNextAction();
             }
         }
@@ -440,9 +456,16 @@ class ActionQueue extends Array {
         return this.some(a => (a.done == ActionStatus.NotStarted || a.done == ActionStatus.Waiting) && a.actionID == "=");
     }
     scrollQueue() {
-        if (!actionBarWidth)
-            return setActionBarWidth(this.node);
-        this.node.parentElement.scrollLeft = Math.max((this.cursor !== null ? this.cursor : 0) * 16 - (actionBarWidth / 2), 0);
+        if (this.isScrolling)
+            return;
+        this.isScrolling = true;
+        setTimeout(() => {
+            if (!actionBarWidth)
+                return setActionBarWidth(this.node);
+            this.node.parentElement.scrollLeft = Math.max((this.cursor !== null ? this.cursor : this.length) * 16 - (actionBarWidth / 2), 0);
+            // Potentially take active action into account
+            this.isScrolling = false;
+        });
     }
     get node() {
         if (this.queueNode !== null)
@@ -568,8 +591,8 @@ function countMultipleActions() {
         let nodes = queueNode.children;
         let actionCount = 0;
         let countedType = null;
-        for (let j = 0; j < queue.length; j++) {
-            let nextType = queue[j].actionID;
+        for (let j = 0; j <= queue.length; j++) {
+            let nextType = queue[j]?.actionID;
             if (actionCount > 3 && nextType != countedType) {
                 let node = document.createElement("div");
                 node.classList.add("action-count");

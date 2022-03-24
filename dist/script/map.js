@@ -86,7 +86,7 @@ setTimeout(() => {
     });
 });
 // The tiles that can be pathfinded through.
-const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDd¢¥£©Θ|<>';
+const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDdP¢¥£©Θ|<>';
 // Water can flow through shrooms, albeit slower.
 const shrooms = "♠♣α§δ";
 const runesTiles = "WHTtDdF";
@@ -233,6 +233,7 @@ function setMined(x, y, icon) {
         " ": ".",
         "g": ".",
         "G": ".",
+        "X": ".",
         "○": ".",
         "c": ".",
         "§": ".",
@@ -243,8 +244,10 @@ function setMined(x, y, icon) {
         "░": ".",
         "╖": ".",
         "╣": ".",
+        "■": ".",
         "1": ".",
         "2": ".",
+        "3": ".",
     };
     x += zones[currentZone].xOffset;
     y += zones[currentZone].yOffset;

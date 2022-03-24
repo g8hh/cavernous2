@@ -59,6 +59,7 @@ class Stat {
         // For combat stats.
         this.current = this.base + amount;
         this.dirty = true;
+        this.update();
     }
     update(forceIncreaseAtUpdate = false) {
         if (!this.dirty) {
@@ -173,7 +174,7 @@ class Stat {
             return;
         }
         this.current -= amount;
-        if (this.current < 0) {
+        if (this.current < 0.01) {
             this.current = 0;
         }
         this.dirty = true;

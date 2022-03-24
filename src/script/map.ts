@@ -33,7 +33,7 @@ const classMapping: classMappingType = {
 	"«": ["travertine", "Travertine"], // Mohs 6
 	"╖": ["granite", "Granite"], // Mohs 5
 	"╣": ["basalt", "Basalt"], // Mohs 6
-	"■": ["chert", "Chert"], // Mohs 7, unused
+	"■": ["chert", "Chert"], // Mohs 7
 	"♥": ["clone-machine", "Strange Machine"],
 	"+": ["gold", "Gold Ore"],
 	"%": ["iron", "Iron Ore"],
@@ -101,7 +101,7 @@ setTimeout(() => {
 });
 
 // The tiles that can be pathfinded through.
-const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDd¢¥£©Θ|<>';
+const walkable = '*.♥╬▣=⎶&║"()[]{}^WHTtFDdP¢¥£©Θ|<>';
 
 // Water can flow through shrooms, albeit slower.
 const shrooms = "♠♣α§δ";
@@ -261,6 +261,7 @@ function setMined(x: number, y: number, icon?: string) {
 		" ": ".",
 		"g": ".",
 		"G": ".",
+		"X": ".",
 		"○": ".",
 		"c": ".",
 		"§": ".",
@@ -271,8 +272,10 @@ function setMined(x: number, y: number, icon?: string) {
 		"░": ".",
 		"╖": ".",
 		"╣": ".",
+		"■": ".",
 		"1": ".",
 		"2": ".",
+		"3": ".",
 	}
 	x += zones[currentZone].xOffset;
 	y += zones[currentZone].yOffset;

@@ -39,6 +39,8 @@ class Clone {
 		this.minHealth = 0;
 		this.isSyncing = false;
 		this.notSyncing = false;
+		this.inCombat = false;
+		this.repeated = false;
 	}
 
 	reset() {
@@ -46,7 +48,6 @@ class Clone {
 		this.remainingTime = 0;
 		this.damage = 0;
 		this.styleDamage();
-		this.repeated = false;
 		this.resetTimeLine();
 	}
 
@@ -72,7 +73,10 @@ class Clone {
 	}
 
 	styleDamage() {
-		if (!this.el) return;
+		if (!this.el){
+			this.el = document.querySelector(`#queue${this.id}`);
+			if (!this.el) return;
+		}
 		const hp = 1 - Math.min(this.damage / getStat("Health").current);
 		(this.el.querySelector(".damage") as HTMLElement).style.width = hp == 1 || !Number.isFinite(hp) ? "0" : hp * 100 + "%";
 		if (hp < 0){
