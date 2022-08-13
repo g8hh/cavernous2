@@ -131,6 +131,10 @@ td.revisit {
 	font-weight: bold;
 }
 
+td.skipped {
+	font-style: italic;
+}
+
 .action {
 	line-height: 20px;
 	min-width: 16px;
@@ -653,7 +657,7 @@ h4#location-name {
 	width: 250px;
 	background: #99bbbb;
 	border: 1px solid #00000033;
-	z-index: 5;
+	z-index: 50;
 	pointer-events: none;
 	padding: 2px;
 	color: #000000;
@@ -771,6 +775,16 @@ h4#location-name {
 #delete-route-button {
 	background-color: #ff000033;
 	border-color: #ff000033;
+}
+
+#nogrind-button {
+	background-color: #33cc3333;
+	border-color: #33cc3333;
+}
+
+#nogrind-button.dontgrind {
+	background-color: #cc333333;
+	border-color: #cc333333;
 }
 
 .delete-route {
@@ -1322,6 +1336,28 @@ td:hover:after {
 	user-select: none;
 }
 
+.loop-zone {
+	display: inline-block;
+	width: 25px;
+	height: 25px;
+	line-height: 25px;
+	border: 1px solid;
+	cursor: pointer;
+}
+
+.loop-zone.active {
+	background-color: #279427;
+}
+
+#load-loop-log {
+	display: inline-block;
+	border: 1px solid black;
+	height: 25px;
+	line-height: 25px;
+	padding: 0 5px;
+	cursor: pointer;
+}
+
 #loop-stats,
 #loop-actions,
 #loop-prev {
@@ -1358,6 +1394,19 @@ td:hover:after {
 
 .log-entry.previous {
 	cursor: pointer;
+}
+
+.log-entry.previous .pin {
+	color: #ffffff;
+	border: 1px;
+}
+
+.log-entry.previous .pin.pinned {
+	color: #279427;
+}
+
+.log-entry.previous .pin.disabled {
+	color: #cccccc;
 }
 
 .queue-buttons {

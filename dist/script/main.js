@@ -46,6 +46,8 @@ function resetLoop(noLoad = false, saveGame = true) {
     const mana = getStat("Mana");
     if (getMessage("Time Travel").display(zones[0].manaGain == 0 && realms[currentRealm].name == "Core Realm"))
         setSetting(toggleAutoRestart, 3);
+    else
+        getMessage("Persisted Programming").display();
     if (mana.base == 5.5)
         getMessage("The Looping of Looping Loops").display() && setSetting(toggleAutoRestart, 1);
     if (mana.base == 6)
@@ -54,11 +56,12 @@ function resetLoop(noLoad = false, saveGame = true) {
         getMessage("Buy More Time").display();
     if (routes.length == 3)
         getMessage("All the known ways").display() && setSetting(toggleGrindMana, true);
-    if (queueTime > 50)
+    if (queueTime > 50000)
         getMessage("Looper's Log: Supplemental").display();
-    storeLoopLog();
+    if (mana.current > 0) {
+        currentLoopLog.finalize();
+    }
     stats.forEach((s, i) => {
-        GrindRoute.updateBestRoute(s.name, s.current - loopStatStart[i]);
         s.reset();
         s.update();
     });
@@ -74,6 +77,7 @@ function resetLoop(noLoad = false, saveGame = true) {
     });
     clones.forEach(c => c.reset());
     queueTime = 0;
+    totalDrain = 0;
     loopCompletions = 0;
     creatures.forEach(c => {
         c.attack = c.creature.attack;
@@ -98,137 +102,6 @@ function resetLoop(noLoad = false, saveGame = true) {
     }
     resetting = false;
     currentRoutes = [];
-}
-/********************************************* Loop Log *********************************************/
-let loopActions = {};
-let loopStatStart = [];
-let previousLoopLogs = [];
-let loopGoldVaporized = [0, 0];
-let loopLogVisible = false;
-const loopLogBox = document.querySelector("#loop-log-box");
-if (loopLogBox === null)
-    throw new Error("No loop log box found");
-const logEntryTemplate = document.querySelector("#log-entry-template");
-logEntryTemplate.removeAttribute("id");
-const statLogEntryTemplate = document.querySelector("#stat-log-entry-template");
-statLogEntryTemplate.removeAttribute("id");
-const previousLogTemplate = document.querySelector("#previous-log-template");
-previousLogTemplate.removeAttribute("id");
-const MAX_EPHEMERAL_LOGS = 10;
-const loopGoldCountNode = document.querySelector("#loop-gold-count");
-const loopGoldValueNode = document.querySelector("#loop-gold-value");
-let displayedOldLog = false;
-function storeLoopLog() {
-    if (!Object.keys(loopActions).length) {
-        loopStatStart = stats.map(s => s.base);
-        return;
-    }
-    const newLog = {
-        actions: { ...loopActions },
-        stats: loopStatStart.map((s, i) => {
-            return { current: stats[i].current - loopStatStart[i], base: stats[i].base - loopStatStart[i] };
-        }),
-        kept: false,
-    };
-    loopActions = {};
-    loopStatStart = stats.map(s => s.base);
-    previousLoopLogs.push(newLog);
-    const ephemeralLogCount = previousLoopLogs.filter(l => !l.kept).length;
-    if (ephemeralLogCount > MAX_EPHEMERAL_LOGS) {
-        let filtered = false;
-        previousLoopLogs = previousLoopLogs.filter(l => filtered || l.kept || ((filtered = true) && false));
-    }
-    loopGoldVaporized = [0, 0];
-}
-function displayLoopLog(logActions = loopActions, logStats = null) {
-    loopLogBox.hidden = false;
-    loopLogVisible = true;
-    const loopActionNode = loopLogBox.querySelector("#loop-actions");
-    const loopStatNode = loopLogBox.querySelector("#loop-stats");
-    const loopPrevNode = loopLogBox.querySelector("#loop-prev-list");
-    while (loopActionNode.lastChild) {
-        loopActionNode.removeChild(loopActionNode.lastChild);
-    }
-    while (loopStatNode.lastChild) {
-        loopStatNode.removeChild(loopStatNode.lastChild);
-    }
-    while (loopPrevNode.lastChild) {
-        loopPrevNode.removeChild(loopPrevNode.lastChild);
-    }
-    let actions = Object.entries(logActions);
-    actions = actions.sort((a, b) => b[1].reduce((acc, cur) => acc + cur, 0) - a[1].reduce((acc, cur) => acc + cur, 0));
-    const totalActionNode = logEntryTemplate.cloneNode(true);
-    totalActionNode.querySelector(".name").innerHTML = "Total clone-seconds";
-    totalActionNode.querySelector(".value").innerHTML = writeNumber(actions.reduce((a, c) => a + c[1].reduce((acc, cur) => acc + cur, 0), 0) / 1000, 1);
-    totalActionNode.style.fontWeight = "bold";
-    loopActionNode.append(totalActionNode);
-    const totalStatNode = statLogEntryTemplate.cloneNode(true);
-    totalStatNode.querySelector(".name").innerHTML = "Total stats gained";
-    totalStatNode.style.fontWeight = "bold";
-    loopStatNode.append(totalStatNode);
-    for (let i = 0; i < actions.length; i++) {
-        const node = logEntryTemplate.cloneNode(true);
-        node.classList.add(actions[i][0].replace(/ /g, "-"));
-        node.querySelector(".name").innerHTML = actions[i][0];
-        node.querySelector(".value").innerHTML = writeNumber(actions[i][1].reduce((acc, cur) => acc + cur, 0) / 1000, 1);
-        node.querySelector(".description").innerHTML = `Relevant stats:<br>${getAction(actions[i][0])?.stats.map(s => `${s[0].name}: ${s[1]}`).join("<br>") || ""}`;
-        loopActionNode.append(node);
-        node.style.color = setRGBContrast(window.getComputedStyle(node).backgroundColor);
-    }
-    let totalStats = 0;
-    for (let i = 0; i < loopStatStart.length; i++) {
-        if (!stats[i].learnable)
-            continue;
-        if (stats[i].current == loopStatStart[i])
-            continue;
-        const node = statLogEntryTemplate.cloneNode(true);
-        node.querySelector(".name").innerHTML = stats[i].name;
-        if (logStats === null) {
-            node.querySelector(".current-value").innerHTML = writeNumber(stats[i].current - loopStatStart[i], 3);
-            node.querySelector(".base-value").innerHTML = writeNumber(stats[i].base - loopStatStart[i], 3);
-        }
-        else {
-            node.querySelector(".current-value").innerHTML = writeNumber(logStats[i].current, 3);
-            node.querySelector(".base-value").innerHTML = writeNumber(logStats[i].base, 3);
-        }
-        totalStats += stats[i].base - loopStatStart[i];
-        loopStatNode.append(node);
-    }
-    totalStatNode.querySelector(".base-value").innerHTML = writeNumber(totalStats, 3);
-    if (+getComputedStyle(loopActionNode).height.replace("px", "") > +getComputedStyle(document.body).height.replace("px", "") * 0.68) {
-        loopActionNode.style.overflowY = "auto";
-    }
-    else {
-        loopActionNode.style.overflowY = "unset";
-    }
-    loopGoldCountNode.innerHTML = loopGoldVaporized[0].toString();
-    loopGoldValueNode.innerHTML = writeNumber(loopGoldVaporized[1], 3);
-    const node = previousLogTemplate.cloneNode(true);
-    node.querySelector(".name").innerHTML = "Current";
-    node.querySelector(".value").innerHTML = writeNumber(Object.values(loopActions).reduce((a, c) => a + c.reduce((acc, cur) => acc + cur, 0), 0) / 1000, 1) + " cs";
-    node.onclick = e => {
-        displayedOldLog = false;
-        displayLoopLog();
-        e.stopPropagation();
-    };
-    loopPrevNode.append(node);
-    for (let i = previousLoopLogs.length - 1; i >= 0; i--) {
-        let log = previousLoopLogs[i];
-        const node = previousLogTemplate.cloneNode(true);
-        node.querySelector(".name").innerHTML = "Previous log";
-        node.querySelector(".value").innerHTML = writeNumber(Object.values(log.actions).reduce((a, c) => a + c.reduce((acc, cur) => acc + cur, 0), 0) / 1000, 1) + " cs";
-        node.onclick = e => {
-            displayedOldLog = true;
-            displayLoopLog(log.actions, log.stats);
-            e.stopPropagation();
-        };
-        loopPrevNode.append(node);
-    }
-}
-function hideLoopLog() {
-    loopLogBox.hidden = true;
-    loopLogVisible = false;
-    displayedOldLog = false;
 }
 /** ******************************************* Saving *********************************************/
 const URLParams = new URL(document.location.href).searchParams;
@@ -271,8 +144,12 @@ let save = async function save() {
     };
     const messageData = messages.map(m => [m.name, m.displayed]);
     const savedRoutes = JSON.parse(JSON.stringify(routes, (key, value) => {
-        if (key == "usedRoutes")
+        if (key == "log") {
             return undefined;
+        }
+        if (key == "usedRoutes") {
+            return value ? value.map((r) => r.id) : undefined;
+        }
         return value;
     }));
     const runeData = runes.map(r => {
@@ -440,6 +317,7 @@ function displaySaveClick(event) {
 let lastAction = Date.now();
 let timeBanked = 0;
 let queueTime = 0;
+let totalDrain = 0;
 let queuesNode;
 let queueTimeNode;
 let zoneTimeNode;
@@ -449,6 +327,8 @@ let gameStatus = { paused: false };
 const fps = 60;
 let shouldReset = false;
 setInterval(function mainLoop() {
+    if (zones[0].index === -1 || realms[0].index === -1)
+        return;
     if (shouldReset) {
         resetLoop();
     }
@@ -461,6 +341,21 @@ setInterval(function mainLoop() {
     if (settings.running) {
         if (mana.current == 0 || clones.every(c => c.damage === Infinity)) {
             queuesNode.classList.add("out-of-mana");
+            // Attempt to update any mana rock currently being mined
+            clones.forEach(c => {
+                let cloneLoc = zones[currentZone].getMapLocation(c.x, c.y);
+                if (cloneLoc?.baseType.name == "Mana-infused Rock") {
+                    let action = cloneLoc.getPresentAction();
+                    if (action && action.startingDuration > action.remainingDuration) {
+                        Route.updateBestRoute(cloneLoc);
+                    }
+                    const route = getBestRoute(c.x, c.y, currentZone);
+                    if (route) {
+                        route.hasAttempted = true;
+                    }
+                }
+            });
+            currentLoopLog.finalize();
             getMessage("Out of Mana").display();
             if (settings.autoRestart == AutoRestart.RestartAlways || (settings.autoRestart == AutoRestart.RestartDone && clones.every(c => c.repeated))) {
                 resetLoop();
@@ -502,15 +397,20 @@ setInterval(function mainLoop() {
     queueTimeNode = queueTimeNode || document.querySelector("#time-spent");
     queueTimeNode.innerText = writeNumber(queueTime / 1000, 1);
     zoneTimeNode = zoneTimeNode || document.querySelector("#time-spent-zone");
-    zoneTimeNode.innerText = writeNumber((queueTime - (zones[currentZone].zoneStartTime || 0)) / 1000, 1);
+    if (currentZone == displayZone) {
+        zoneTimeNode.innerText = writeNumber((queueTime - (zones[currentZone].zoneStartTime || 0)) / 1000, 1);
+    }
+    else {
+        zoneTimeNode.innerText = writeNumber(Math.max(0, (zones[displayZone + 1]?.zoneStartTime || 0) - (zones[displayZone].zoneStartTime || 0)) / 1000, 1);
+    }
     queueActionNode = queueActionNode || document.querySelector("#actions-spent");
     queueActionNode.innerText = `${writeNumber(loopCompletions, 0)} (x${writeNumber(1 + loopCompletions / 40, 3)})`;
     redrawTimeNode();
     stats.forEach(e => e.update());
     stuff.forEach(e => e.displayDescription());
+    if (currentLoopLog == displayedLog)
+        displayedLog.display();
     drawMap();
-    if (loopLogVisible && !displayedOldLog)
-        displayLoopLog();
 }, Math.floor(1000 / fps));
 function runActions(time) {
     const mana = getStat("Mana");
@@ -524,6 +424,16 @@ function runActions(time) {
                 resetLoop();
             }
             gameStatus.paused = true;
+            return time;
+        }
+        // Pause ASAP.
+        if (actions.some(a => a.actionID == ":")) {
+            if (settings.running)
+                toggleRunning();
+            actions.forEach(a => {
+                if (a.action == ":")
+                    a.complete();
+            });
             return time;
         }
         if (actions.some(a => a.done == ActionStatus.NotStarted)) {
@@ -556,7 +466,10 @@ function runActions(time) {
             nextTickTime = 0.01;
         actions.forEach(a => a.tick(nextTickTime));
         nullActions.forEach(a => clones[a].addToTimeline({ name: clones[a].damage === Infinity ? "Dead" : "None" }, nextTickTime));
-        waitActions.forEach(a => a.currentClone.addToTimeline({ name: "Wait" }, nextTickTime));
+        waitActions.forEach(a => {
+            a.currentClone.addToTimeline({ name: "Wait" }, nextTickTime);
+            getStat("Speed").gainSkill(nextTickTime / 1000);
+        });
         clones.forEach(c => c.drown(nextTickTime));
         zones[currentZone].tick(nextTickTime);
         mana.spendMana(nextTickTime / 1000);
@@ -577,247 +490,10 @@ function setup() {
         timeBanked = Infinity;
     }
 }
-/** **************************************** Key Bindings ******************************************/
-const keyFunctions = {
-    "ArrowLeft": () => {
-        addActionToQueue("L");
-    },
-    "ArrowUp": () => {
-        addActionToQueue("U");
-    },
-    "ArrowRight": () => {
-        addActionToQueue("R");
-    },
-    "ArrowDown": () => {
-        addActionToQueue("D");
-    },
-    "Space": () => {
-        addActionToQueue("I");
-    },
-    "^Space": () => {
-        addActionToQueue("T");
-    },
-    "Backspace": () => {
-        addActionToQueue("B");
-    },
-    "^Backspace": () => {
-        clearQueues();
-    },
-    "KeyW": () => {
-        if (settings.useWASD) {
-            addActionToQueue("U");
-        }
-        else {
-            toggleAutoRestart();
-        }
-    },
-    "KeyA": () => {
-        if (settings.useWASD) {
-            addActionToQueue("L");
-        }
-    },
-    "KeyS": () => {
-        if (settings.useWASD) {
-            addActionToQueue("D");
-        }
-        else {
-            toggleGrindStats();
-        }
-    },
-    "KeyD": () => {
-        if (settings.useWASD) {
-            addActionToQueue("R");
-        }
-    },
-    "KeyR": () => {
-        if (getStat("Mana").base == 5) {
-            hideMessages();
-        }
-        resetLoop();
-    },
-    "KeyP": () => {
-        toggleRunning();
-    },
-    "KeyB": () => {
-        toggleBankedTime();
-    },
-    "KeyG": () => {
-        toggleGrindMana();
-    },
-    "KeyZ": () => {
-        toggleFollowZone();
-    },
-    "KeyQ": () => {
-        toggleLoadPrereqs();
-    },
-    "Tab": (e) => {
-        const previous = zones[currentZone].queues.findIndex(q => q.selected);
-        zones[currentZone].queues.forEach((q, i) => q.selected = i == (previous + 1) % clones.length);
-        e.stopPropagation();
-    },
-    ">Tab": (e) => {
-        const previous = zones[currentZone].queues.findIndex(q => q.selected);
-        zones[currentZone].queues.forEach((q, i) => q.selected = previous == (i + 1) % clones.length);
-        e.stopPropagation();
-    },
-    "^KeyA": () => {
-        zones[currentZone].queues.forEach(q => [q.selected, q.cursor] = [true, null]);
-    },
-    "KeyC": () => {
-        if (settings.useWASD) {
-            toggleAutoRestart();
-        }
-    },
-    "KeyT": () => {
-        if (settings.useWASD) {
-            toggleGrindStats();
-        }
-    },
-    "End": () => {
-        zones[displayZone].queues.forEach(q => q.cursor = null);
-    },
-    "Home": () => {
-        zones[displayZone].queues.forEach(q => q.cursor = -1);
-    },
-    "^ArrowLeft": () => {
-        zones[displayZone].queues.forEach(q => q.cursor === null || q.cursor--);
-    },
-    "^ArrowRight": () => {
-        zones[displayZone].queues.forEach(q => q.cursor === null || q.cursor++);
-    },
-    "^KeyW": () => {
-        if (!settings.useWASD)
-            return;
-        let queues = zones[displayZone].queues;
-        document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
-        for (let i = 1; i < clones.length; i++) {
-            if (!queues.some(q => q.index == i - 1) && queues.some(q => q.index == i ? q.index-- + Infinity : false)) {
-                [queues[i], queues[i - 1]] = [queues[i - 1], queues[i]];
-            }
-        }
-        queues.forEach(q => q.selected = true);
-        redrawQueues();
-    },
-    "^ArrowUp": () => {
-        let queues = zones[displayZone].queues;
-        document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
-        for (let i = 1; i < clones.length; i++) {
-            if (!queues.some(q => q.index == i - 1) && queues.some(q => q.index == i ? q.index-- + Infinity : false)) {
-                [queues[i], queues[i - 1]] = [queues[i - 1], queues[i]];
-            }
-        }
-        queues.forEach(q => q.selected = true);
-        redrawQueues();
-    },
-    "^KeyS": () => {
-        if (!settings.useWASD)
-            return;
-        let queues = zones[displayZone].queues;
-        document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
-        for (let i = 1; i < clones.length; i++) {
-            if (!queues.some(q => q.index == i - 1) && queues.some(q => q.index == i ? q.index-- + Infinity : false)) {
-                [queues[i], queues[i - 1]] = [queues[i - 1], queues[i]];
-            }
-        }
-        queues.forEach(q => q.selected = true);
-        redrawQueues();
-    },
-    "^ArrowDown": () => {
-        let queues = zones[displayZone].queues;
-        document.querySelectorAll(`.selected-clone`).forEach(n => n.classList.remove("selected-clone"));
-        for (let i = clones.length - 2; i >= 0; i--) {
-            if (!queues.some(q => q.index == i + 1) && queues.some(q => q.index == i ? q.index++ + Infinity : false)) {
-                [queues[i], queues[i + 1]] = [queues[i + 1], queues[i]];
-            }
-        }
-        queues.forEach(q => q.selected = true);
-        redrawQueues();
-    },
-    "Digit1": () => {
-        addRuneAction(0);
-    },
-    "Digit2": () => {
-        addRuneAction(1);
-    },
-    "Digit3": () => {
-        addRuneAction(2);
-    },
-    "Digit4": () => {
-        addRuneAction(3);
-    },
-    "Digit5": () => {
-        addRuneAction(4);
-    },
-    "Digit6": () => {
-        addRuneAction(5);
-    },
-    "Numpad1": () => {
-        addRuneAction(0);
-    },
-    "Numpad2": () => {
-        addRuneAction(1);
-    },
-    "Numpad3": () => {
-        addRuneAction(2);
-    },
-    "Numpad4": () => {
-        addRuneAction(3);
-    },
-    "Numpad5": () => {
-        addRuneAction(4);
-    },
-    "Numpad6": () => {
-        addRuneAction(5);
-    },
-    "Equal": () => {
-        addActionToQueue("=");
-    },
-    ">Equal": () => {
-        addActionToQueue("+");
-    },
-    "NumpadAdd": () => {
-        addActionToQueue("+");
-    },
-    "Escape": () => {
-        hideMessages();
-    },
-    "Enter": () => {
-        hideMessages();
-    },
-    "Period": () => {
-        addActionToQueue(".");
-    },
-    "Comma": () => {
-        addActionToQueue(",");
-    },
-    ">Semicolon": () => {
-        addActionToQueue(":");
-    },
-    "Semicolon": () => {
-        addActionToQueue(":");
-    },
-    "KeyF": () => {
-        if (visibleX === null || visibleY === null)
-            return;
-        addActionToQueue(`P${visibleX}:${visibleY};`);
-        document.activeElement.blur();
-    }
-};
-setTimeout(() => {
-    document.body.onkeydown = e => {
-        if (!document.querySelector("input:focus")) {
-            const key = `${e.ctrlKey || e.metaKey ? "^" : ""}${e.shiftKey ? ">" : ""}${e.code}`;
-            if (keyFunctions[key]) {
-                e.preventDefault();
-                keyFunctions[key](e);
-            }
-        }
-    };
-    load();
-}, 10);
 function applyCustomStyling() {
     if (settings.debug_verticalBlocksJustify) {
         document.querySelector(".vertical-blocks").style.justifyContent = settings.debug_verticalBlocksJustify;
     }
 }
+setTimeout(load, 15);
 //# sourceMappingURL=main.js.map

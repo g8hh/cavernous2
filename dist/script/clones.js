@@ -89,6 +89,10 @@ class Clone {
             document.querySelector(".clone-info .action-name").innerHTML = lastEntry.type;
             document.querySelector(".clone-info .action-progress").innerHTML = writeNumber(this.remainingTime / 1000, 2);
         }
+        else {
+            document.querySelector(".clone-info .action-name").innerHTML = "";
+            document.querySelector(".clone-info .action-progress").innerHTML = "0";
+        }
     }
     sync() {
         if (!this.notSyncing)
@@ -128,14 +132,10 @@ class Clone {
         }
     }
     addToTimeline(action, time = 0) {
-        if (action.name == "None")
-            return;
         if (action === null || time < 1 || isNaN(time))
             return;
         // Loop log
-        if (!loopActions[action.name])
-            loopActions[action.name] = Array(zones.length).fill(0);
-        loopActions[action.name][currentZone] += time;
+        currentLoopLog.addActionTime(action.name, currentZone, time);
         // Timeline
         if (!settings.timeline)
             return;
@@ -174,6 +174,12 @@ class Clone {
             if (clones.length == 5)
                 getMessage("Fourth Clone").display();
         }
+        zones.forEach(z => {
+            while (z.queues.length < clones.length) {
+                let q = new ActionQueue(z.queues.length);
+                z.queues.push(q);
+            }
+        });
     }
 }
 let clones = [];

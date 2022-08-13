@@ -9,6 +9,9 @@ class GrindRoute {
         this.totalStatGain = totalStatGain;
         this.totalTime = queueTime;
         this.projectedGain = GrindRoute.calculateProjectedGain(this.statName, this.totalStatGain);
+        // Don't save routes for stats which aren't learnable.
+        if (!getStat(x).learnable)
+            this.projectedGain = -Infinity;
         this.realm = currentRealm;
         this.route = zones.map(z => z.node ? z.queues.map(queue => queueToString(queue)) : "").filter(q => q);
     }
@@ -17,8 +20,8 @@ class GrindRoute {
             changeRealms(this.realm);
         this.route.forEach((q, i) => {
             zones[i].queues.map(e => e.clear());
-            for (let j = 0; j < q.length; j++) {
-                zones[i].queues[j].fromString(q[j]);
+            for (let j = 0; j < zones[i].queues.length; j++) {
+                zones[i].queues[j].fromString(q[j] || q[q.length - 1]);
             }
         });
         redrawQueues();
@@ -66,7 +69,7 @@ class GrindRoute {
     }
     static fromJSON(ar) {
         ar = this.migrate(ar);
-        return ar.map(r => new GrindRoute(r));
+        return ar.map(r => new GrindRoute(r)).filter(r => getStat(r.statName).learnable);
     }
     static deleteRoute(stat) {
         let index = grindRoutes.findIndex(r => r.statName == stat);
@@ -76,7 +79,7 @@ class GrindRoute {
         if (!grindRoutes.length)
             return;
         let bestRoute = grindRoutes
-            .filter(r => r.projectedGain)
+            .filter(r => r.projectedGain > settings.minStatGain)
             .sort((a, b) => b.projectedGain - a.projectedGain)[0];
         if (bestRoute) {
             bestRoute.loadRoute();

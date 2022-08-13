@@ -1,12 +1,12 @@
 "use strict";
 let actionBarWidth = 0;
-let currentClone;
 class QueueAction {
     constructor(actionID, queue, status = false) {
         this.currentClone = null;
         this.currentAction = null;
         this.done = ActionStatus.NotStarted;
         this.domNode = null;
+        this.lastAttemptFailed = false;
         this.lastProgress = 0;
         this.isProgressQueued = false;
         this.actionID = actionID;
@@ -92,6 +92,7 @@ class QueueAction {
                 const action = this.action == "I" ? location?.getPresentAction() : location?.getEnterAction();
                 if (!action) {
                     this.done = ActionStatus.Complete;
+                    this.lastAttemptFailed = true;
                     return;
                 }
                 this.currentAction = action;
@@ -125,11 +126,6 @@ class QueueAction {
                             break;
                         case "+":
                             this.currentClone.noSync();
-                            this.complete();
-                            break;
-                        case ":":
-                            if (settings.running)
-                                toggleRunning();
                             this.complete();
                             break;
                         case "<":
@@ -200,7 +196,7 @@ class QueueAction {
                     const cloneY = c.y + +(action.action == "D") - +(action.action == "U");
                     if (cloneX == targetX && cloneY == targetY) {
                         action.currentAction = new ActionInstance(Object.create(getAction("Walk")), location, true);
-                        action.currentAction.start(this.currentClone);
+                        action.currentAction.start(c);
                         actions.push(action.currentAction);
                     }
                 });
@@ -214,6 +210,16 @@ class QueueAction {
                     this.complete();
                 }
             }
+            else if (this.action == "I" && this.currentAction.location.type.canWorkTogether) {
+                clones.forEach((c, i) => {
+                    const action = zones[currentZone].queues[i].getNextAction();
+                    if (!action || action.done == ActionStatus.NotStarted)
+                        return;
+                    if (c.x == targetX && c.y == targetY && action.action == "I") {
+                        action.complete();
+                    }
+                });
+            }
             else {
                 this.complete();
             }
@@ -222,14 +228,19 @@ class QueueAction {
     }
     complete() {
         this.done = this.actionID == "T" ? ActionStatus.NotStarted : ActionStatus.Complete;
+        if (this.done == ActionStatus.Complete)
+            currentLoopLog.addQueueAction(this.currentClone.id, this.actionID);
         this.drawProgress();
     }
     setWaiting() {
         this.done = this.actionID == "T" ? ActionStatus.Complete : ActionStatus.Waiting;
+        if (this.done == ActionStatus.Complete)
+            currentLoopLog.addQueueAction(this.currentClone.id, this.actionID);
         this.drawProgress();
     }
     reset() {
         this.done = ActionStatus.NotStarted;
+        this.lastAttemptFailed = false;
         this.lastProgress = 0;
         this.currentClone = null;
         this.currentAction = null;
@@ -270,6 +281,7 @@ class QueuePathfindAction extends QueueAction {
         // Prevent pathing to the same spot.
         if (getDistance(originX, this.targetX, originY, this.targetY) == 0) {
             this.done = ActionStatus.Complete;
+            currentLoopLog.addQueueAction(this.currentClone.id, this.actionID);
             this.drawProgress();
             return null;
         }
@@ -384,6 +396,10 @@ class ActionQueue extends Array {
         return ar;
     }
     addAction(actionID) {
+        if (actionID == "b" && this.cursor !== null) {
+            actionID = "B";
+            this.cursor++;
+        }
         if (actionID == "B") {
             return this.removeAction();
         }
@@ -395,7 +411,7 @@ class ActionQueue extends Array {
             return;
         }
         let done = this.cursor == null ? false // last action, don't skip
-            : this.cursor >= 0 ? this[this.cursor].done // middle action, skip if prior is done
+            : this.cursor >= 0 ? this[this.cursor + 1].done // middle action, skip if next is started
                 : this[0].started; // first action, skip if next is started
         let newAction = actionID[0] == "P" ? new QueuePathfindAction(actionID, this, Boolean(done))
             : new QueueAction(actionID, this, Boolean(done));
@@ -435,9 +451,12 @@ class ActionQueue extends Array {
         const nextAction = this.find(a => a.done != ActionStatus.Complete) || null;
         if (nextAction === null) {
             const index = this.findIndex(a => a.actionID == "<");
-            if (index > 0 && index < this.length - 1) {
+            if (index >= 0 && index < this.length - 1) {
+                if (this.every((a, i) => a.lastAttemptFailed || i <= index))
+                    return null;
                 for (let i = index; i < this.length; i++) {
-                    this[i].done = ActionStatus.NotStarted;
+                    this[i].reset();
+                    this[i].drawProgress();
                 }
                 clones[this.index].repeated = true;
                 return this.getNextAction();
@@ -517,13 +536,22 @@ class ActionQueue extends Array {
     }
 }
 function selectClone(target, event) {
-    const index = +target.id.replace("queue", "");
+    let index;
+    if (target instanceof HTMLElement) {
+        index = +target.id.replace("queue", "");
+    }
+    else {
+        index = target;
+        if (zones[displayZone].queues.length <= index)
+            return;
+    }
     if (event.ctrlKey || event.metaKey) {
         zones[displayZone].queues[index].selected = !zones[displayZone].queues[index].selected;
     }
     else {
         zones[displayZone].queues.forEach((q, i) => q.selected = i == index);
     }
+    clones[zones[currentZone].queues.findIndex(q => q.selected)].writeStats();
 }
 function getActionValue(action) {
     return +(action.match(/\d+/)?.[0] || 0);
@@ -662,9 +690,11 @@ function exportQueues() {
     let exportString = zones[displayZone].queues.map(queue => queueToString(queue));
     navigator.clipboard.writeText(JSON.stringify(exportString));
 }
+function getLongExport(all = true) {
+    return JSON.stringify(zones.map(z => z.node && (all || currentZone >= z.index) ? z.queues.map(queue => queueToString(queue)) : "").filter(q => q));
+}
 function longExportQueues() {
-    let exportString = zones.map(z => z.node ? z.queues.map(queue => queueToString(queue)) : "").filter(q => q);
-    navigator.clipboard.writeText(JSON.stringify(exportString));
+    navigator.clipboard.writeText(getLongExport());
 }
 function importQueues() {
     let queueString = prompt("Input your queues");
@@ -690,6 +720,7 @@ function importQueues() {
     }
 }
 function longImportQueues(queueString) {
+    console.log(queueString);
     if (!queueString) {
         queueString = prompt("Input your queues");
         if (!queueString)
@@ -697,7 +728,16 @@ function longImportQueues(queueString) {
     }
     let tempQueues = JSON.stringify(zones.map(z => z.node ? z.queues.map(queue => queueToString(queue)) : "").filter(q => q));
     try {
-        let newQueues = JSON.parse(queueString);
+        let newQueues;
+        if (typeof (queueString) == "string") {
+            newQueues = JSON.parse(queueString);
+        }
+        else {
+            newQueues = [];
+            for (let i = 0; i < queueString[0].length; i++) {
+                newQueues.push(queueString.map(q => q[i]));
+            }
+        }
         if (newQueues.length > zones.length || newQueues.some((q) => q.length > clones.length)) {
             alert("Could not import queues - too many queues.");
             return;

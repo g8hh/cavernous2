@@ -17,10 +17,10 @@ class Zone {
 	node: HTMLElement | null;
 	cacheManaGain: number[];
 	startStuff: simpleStuffList;
-	index: number = -1;
+	index: number = 0;
 	lastRoute: ZoneRoute | null;
 	startMana: any;
-	zoneStartTime: number | null;
+	zoneStartTime: number;
 	manaDrain: number = 0;
 
 	public constructor(name: string, map: string[], goalReward: (() => void) | null = null) {
@@ -39,8 +39,8 @@ class Zone {
 		this.node = null;
 		this.cacheManaGain = [0];
 		this.startStuff = [];
-		this.lastRoute = null
-		this.zoneStartTime = null
+		this.lastRoute = null;
+		this.zoneStartTime = -1;
 
 		while (this.mapLocations.length < map.length) {
 			this.mapLocations.push([]);
@@ -108,6 +108,7 @@ class Zone {
 				l.reset();
 			});
 		});
+		this.zoneStartTime = -1;
 		this.manaDrain = 0;
 	}
 
@@ -153,7 +154,7 @@ class Zone {
 			} else if (!this.routes.some(r => r.realm == currentRealm && r.isBetter(this.lastRoute!, this.manaGain))) {
 				this.routesChanged = true;
 				for (let i = 0; i < this.routes.length; i++) {
-					if (this.routes[i].realm != currentRealm) continue;
+					if (this.routes[i].realm != currentRealm || this.routes[i].isLocked) continue;
 					if (this.lastRoute.isBetter(this.routes[i], this.manaGain)) {
 						this.routes.splice(i, 1);
 						i--;
@@ -170,6 +171,7 @@ class Zone {
 			});
 		}
 		this.display();
+		currentLoopLog.moveZone();
 	}
 
 	sumRoute(require: simpleStuffList, startDamage: number[], actionCount: number) {
@@ -276,6 +278,12 @@ class Zone {
 			mapStain = [];
 			drawMap();
 			redrawQueues();
+			zoneTimeNode = zoneTimeNode || document.querySelector("#time-spent-zone");
+			if (this.zoneStartTime == -1){
+				zoneTimeNode.innerText = "0";
+			} else {
+				zoneTimeNode.innerText = writeNumber(Math.max(0, (zones[this.index + 1]?.zoneStartTime + 1 || queueTime) - 1 - (this.zoneStartTime  || 0)) / 1000, 1);
+			}
 		};
 		if (this.routesChanged) {
 			let parent = this.node.querySelector(".routes") as HTMLElement;
@@ -285,7 +293,7 @@ class Zone {
 				parent.removeChild(parent.lastChild);
 			}
 			let head = document.createElement("h4");
-			head.innerHTML = "Routes (click to load, ctrl-click here to clear unused routes):";
+			head.innerHTML = "Routes (click to load, ctrl-click here to clear unused routes):<br>Shift-click a route to prevent deletion.";
 			head.onclick = this.clearRoutes.bind(this);
 			parent.appendChild(head);
 			let routeTemplate = document.querySelector("#zone-route-template");
@@ -299,13 +307,29 @@ class Zone {
 				if (this.routes[i].actionCount) routeNode.querySelector(".actions")!.innerHTML = this.routes[i].actionCount.toString() + "&nbsp;";
 				routeNode.querySelector(".mana")!.innerHTML = this.routes[i].mana.toFixed(2);
 				displayStuff(routeNode, this.routes[i]);
-				routeNode.onclick = () => {
+				routeNode.onclick = (e) => {
+					if (e.shiftKey){
+						if (this.routes[i].isLocked){
+							this.routes[i].isLocked = false;
+							routeNode.querySelector<HTMLElement>(".delete-route-inner")!.innerHTML = "x";
+							routeNode.querySelector<HTMLElement>(".delete-route-inner")!.onclick = this.deleteRoute.bind(this, i);
+						} else {
+							this.routes[i].isLocked = true;
+							routeNode.querySelector<HTMLElement>(".delete-route-inner")!.innerHTML = "";
+							routeNode.querySelector<HTMLElement>(".delete-route-inner")!.onclick = () => {};
+						}
+						return;
+					}
 					this.routes[i].loadRoute(this);
 					parent.querySelectorAll("div.active").forEach(node => node.classList.remove("active"));
 					routeNode.classList.add("active");
 				};
 				routeNode.title = "";
-				routeNode.querySelector<HTMLElement>(".delete-route-inner")!.onclick = this.deleteRoute.bind(this, i);
+				if (this.routes[i].isLocked){
+					routeNode.querySelector<HTMLElement>(".delete-route-inner")!.innerHTML = "";
+				} else {
+					routeNode.querySelector<HTMLElement>(".delete-route-inner")!.onclick = this.deleteRoute.bind(this, i);
+				}
 				if (!usedRoutes.includes(this.routes[i])) {
 					routeNode.classList.add("unused");
 					routeNode.title += "This route is not used for any saved route. ";
@@ -378,8 +402,8 @@ class Zone {
 		if (this.manaDrain){
 			let drainValue = time * this.manaDrain * getStat("Chronomancy").value;
 			getStat("Mana").spendMana(drainValue / 1000);
-			if (!loopActions["Barrier Drain"]) loopActions["Barrier Drain"] = Array(zones.length).fill(0);
-			loopActions["Barrier Drain"][this.index] += drainValue * clones.length;
+			currentLoopLog.addActionTime("Barrier Drain", this.index, drainValue * clones.length);
+			totalDrain += drainValue / 1000;
 		}
 	}
 }
