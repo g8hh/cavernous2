@@ -491,6 +491,9 @@ function runActions(time: number): number {
 			continue;
 		}
 		if (actions.length == 0){
+			if (waitActions.length > 0){
+				waitActions.forEach(a => a.start());
+			}
 			gameStatus.paused = true;
 			return time;
 		}
@@ -498,14 +501,21 @@ function runActions(time: number): number {
 		if (actions.some(a => a.currentAction?.expectedLeft === 0 && a.actionID == "T")){
 			// If it's started and has nothing left, it's tried to start an action with no duration - like starting a Wither activation when it's complete.
 			actions.forEach(a => {
-				if (a.currentAction?.expectedLeft === 0 && a.actionID == "T") a.done = 3;
+				if (a.currentAction?.expectedLeft === 0 && a.actionID == "T") a.done = ActionStatus.Complete;
 			});
 			continue;
 		}
 		let nextTickTime = Math.min(...instances.map(i => i.expectedLeft / instances.reduce((a, c) => a + +(c === i), 0)), time);
 		if (nextTickTime < 0.01) nextTickTime = 0.01;
 		actions.forEach(a => a.tick(nextTickTime));
-		nullActions.forEach(a => clones[a].addToTimeline({name: clones[a].damage === Infinity ? "Dead" : "None"}, nextTickTime));
+		nullActions.forEach(a => {
+			if (clones[a].damage === Infinity){
+				clones[a].addToTimeline({name: "Dead"}, nextTickTime);
+			} else {
+				clones[a].addToTimeline({name: "None"}, nextTickTime);
+				getStat("Speed").gainSkill(nextTickTime / 1000);
+			}
+		});
 		waitActions.forEach(a => {
 			a.currentClone!.addToTimeline({name: "Wait"}, nextTickTime)
 			getStat("Speed").gainSkill(nextTickTime / 1000);
@@ -538,4 +548,5 @@ function applyCustomStyling() {
 	}
 }
 
-setTimeout(load, 15);
+// Calling load directly prevents tests from stopping loading.
+setTimeout(() => load(), 15);
