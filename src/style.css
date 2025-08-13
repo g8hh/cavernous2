@@ -5,6 +5,7 @@
 body {
 	padding: 10px;
 	background: #aacccc;
+	font-family: "Times New Roman", Times, serif;
 }
 
 #templates {
@@ -263,6 +264,7 @@ svg {
 }
 
 #actions-spent,
+#current-barrier-mult,
 #time-spent-zone,
 #time-spent {
 	font-family: "Lucida Console", monospace;
@@ -270,6 +272,10 @@ svg {
 	display: inline-block;
 	text-align: right;
 	font-variant-numeric: tabular-nums;
+}
+
+#barrier-mult {
+	display: none;
 }
 
 #queues {
@@ -283,6 +289,11 @@ svg {
 
 #timelines {
 	margin-top: 10px;
+	contain: style layout;
+}
+
+.timeline {
+	contain: style layout;
 }
 
 .timeline:not(#loop-actions) {
@@ -604,6 +615,7 @@ h4#location-name {
 	padding: 2px 0 0px;
 	display: flex;
 	flex-direction: column;
+	contain: style layout;
 }
 
 #map-legend {
@@ -718,6 +730,9 @@ h4#location-name {
 	padding: 2px;
 	color: #000000;
 	cursor: default;
+	overflow-y: scroll;
+	scrollbar-width: thin;
+	max-height: 100%;
 }
 
 .zone:hover > .routes {
@@ -726,6 +741,12 @@ h4#location-name {
 
 .routes h4 {
 	margin: 0;
+}
+
+.routes h4:first-of-type {
+	top: 0;
+	position: sticky;
+	background: #aacccc;
 }
 
 .routes div {
@@ -1172,6 +1193,10 @@ td.coal:before {
 td.barrier,
 td.zone {
 	background-color: #3939ff;
+}
+
+.barrier-related {
+	color: #3939ff;
 }
 
 td.zone:before {

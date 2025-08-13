@@ -6,6 +6,7 @@ class Route {
 	_cachedEstimate: number = 0;
 	cloneArriveTimes!: number[];
 	cloneHealth!: number[];
+	chronoMult: number = 1;
 	drainLoss: number = 0;
 	goldVaporized: [number, number] = [0, 0];
 	invalidateCost!: boolean;
@@ -56,8 +57,13 @@ class Route {
 				}
 			}).filter(s => s.count > 0);
 
-			this.cloneArriveTimes = clones.filter(c => c.x == this.x && c.y == this.y).map(c => queueTime);
+			this.cloneArriveTimes = clones.filter(c => c.x == this.x && c.y == this.y && zones[this.zone].queues[c.id].getNextAction()?.action === "I")
+			    .map(c => queueTime);
+			if (saveName === "saveGameII_separate") {
+				this.cloneArriveTimes = [Math.min(...this.cloneArriveTimes)];
+			}
 			this.drainLoss = totalDrain;
+			this.chronoMult = getStat("Chronomancy").value;
 
 			this.allDead = false;
 			this.invalidateCost = false;
@@ -154,7 +160,6 @@ class Route {
 
 	updateRoute() {
 		this.manaDrain = zones[currentZone].manaDrain;
-		this.drainLoss = totalDrain;
 		let route = zones[currentZone].queues.map(r => queueToString(r));
 		route = route.filter(e => e.length);
 		if (this.log!.goldVaporizedCount > this.goldVaporized[0]){
@@ -181,8 +186,8 @@ class Route {
 			}
 		}).filter(s => s.count > 0);
 
-		const arrivedClones = clones.filter(c => c.x == this.x && c.y == this.y).length;
-		while (arrivedClones > this.cloneArriveTimes.length){
+		const arrivedClones = clones.filter(c => c.x == this.x && c.y == this.y && zones[this.zone].queues[c.id].getNextAction()?.action === "I").length;
+		while (arrivedClones > this.cloneArriveTimes.length && saveName !== "saveGameII_separate"){
 			this.needsNewEstimate = true;
 			this.cloneArriveTimes.push(queueTime);
 		}
@@ -191,7 +196,7 @@ class Route {
 	getRefineCost(relativeLevel = 0) {
 		let loc = getMapLocation(this.x, this.y, true, this.zone);
 		if (!loc) return Infinity;
-		let mul = getAction("Collect Mana").getBaseDuration(this.realm) * (1 + this.manaDrain);
+		let mul = getAction("Collect Mana").getBaseDuration(this.realm);
 		if (realms[this.realm].name == "Compounding Realm") {
 			mul /= 1 + loopCompletions / 40;
 			mul *= 1 + this.actionCount / 40;
@@ -199,19 +204,47 @@ class Route {
 		return mineManaRockCost(loc, null, this.realm, loc.completions + loc.priorCompletionData[this.realm] + relativeLevel) * mul;
 	}
 
+	getTotalRockTime(current = false) {
+		const manaMult = getRealmMult("Verdant Realm") || 1;
+		const manaTotal = getBaseMana(this.zone, this.realm) + (current ? this.goldVaporized[0] * GOLD_VALUE * manaMult : this.goldVaporized[1]);
+		const drainMult = (1 + this.manaDrain * this.chronoMult);
+		let totalRockTime = this.cloneArriveTimes.reduce((a, c) => a + (manaTotal - (c / 1000)), 0) / drainMult;
+		// Remove drain loss before any clone arrived
+		totalRockTime -= (this.drainLoss * this.cloneArriveTimes.length);
+
+		// Remove drain loss from time prior to other clones arriving
+		const firstCloneArrival = Math.min(...this.cloneArriveTimes);
+		const preArrivalTime = this.cloneArriveTimes.reduce((a, c) => a + (c - firstCloneArrival), 0);
+		totalRockTime -= preArrivalTime / this.cloneArriveTimes.length * (this.manaDrain * this.chronoMult);
+		return totalRockTime;
+	}
+
+	estimateMagicAfterVaporizing(gold:number) {
+		// Underestimate rather than overestimate, to avoid the UI giving a "mana left: 0.01" estimate
+		// for a rock that fails to complete.
+		const baseMagic = getStat("Magic").base;
+		const baseDuration = (realms[this.realm].name == "Long Realm" ? 3 : 1);
+		const highEstimate = baseMagic + gold * baseDuration * 10 / (100 + baseMagic);
+		return baseMagic + gold * baseDuration * 10 / (100 + highEstimate);
+	}
+
 	estimateRefineManaLeft(current = false, ignoreInvalidate = false, completed = false) {
 		if (!this.needsNewEstimate && this.cachedEstimate) return !ignoreInvalidate && this.invalidateCost ? this.cachedEstimate + 1e9 : this.cachedEstimate;
 		this.needsNewEstimate = false;
-		const manaMult = getRealmMult("Verdant Realm") || 1;
-		const manaTotal = getBaseMana(this.zone, this.realm) + (current ? this.goldVaporized[0] * GOLD_VALUE * manaMult : this.goldVaporized[1]);
-		const totalRockTime = this.cloneArriveTimes.reduce((a, c) => a + (manaTotal - (c / 1000)), 0);
-		const rockCost = this.getRefineCost(completed ? 1 : 0);
-		const magic = getStat("Magic").base;
-		const finalMagic = magic + (totalRockTime + this.goldVaporized[0]) / 10;
+		const totalRockTime = this.getTotalRockTime(current);
 
-		let estimate = totalRockTime - rockCost / (((magic + finalMagic) / 2 + 100) / 100);
+		const magic = this.estimateMagicAfterVaporizing(this.goldVaporized[0]);
+		const finalMagic = magic + totalRockTime / 10;
+		const rockCost = this.getRefineCost(completed ? 1 : 0) / (((magic + finalMagic) / 2 + 100) / 100);
+
+		// Maybe consider gems?
+		let estimate = totalRockTime - rockCost;
 		estimate /= this.cloneArriveTimes.length;
-		estimate -= this.drainLoss;
+
+		// Multiply excess by drain multiplier because the difference is not symmetric
+		const drainMult = (1 + this.manaDrain * this.chronoMult);
+		if (estimate > 0) estimate *= drainMult;
+
 		this.cachedEstimate = estimate;
 
 		return !ignoreInvalidate && this.invalidateCost ? estimate + 1e9 : estimate;
@@ -221,11 +254,16 @@ class Route {
 		let times = 0;
 		let currentLeft = this.estimateRefineManaLeft(false, true);
 		let currentCost = this.getRefineCost(times);
-		let nextDiff = 0;
-		while (currentLeft + 0.1 * times * (this.zone + 1) > nextDiff) {
-			nextDiff = (this.getRefineCost(++times) - currentCost) / this.cloneArriveTimes.length;
-			if (nextDiff == 0) return 0;
-		}
+		const manaTotal = getBaseMana(this.zone, this.realm) + this.goldVaporized[1];
+		const totalRockTime = this.cloneArriveTimes.reduce((a, c) => a + (manaTotal - (c / 1000)), 0) / (1 + this.manaDrain / this.chronoMult);
+		const magic = this.estimateMagicAfterVaporizing(this.goldVaporized[0]);
+		const finalMagic = magic + totalRockTime / 10;
+		const magicMod = 1 + ((magic + finalMagic) / 200);
+		while (
+			currentLeft + 0.1 * times * (this.zone + 1)
+			>
+			(this.getRefineCost(times) - currentCost) * (1 + this.manaDrain / this.chronoMult) / this.cloneArriveTimes.length / magicMod)
+			{times++}
 		return times;
 	}
 

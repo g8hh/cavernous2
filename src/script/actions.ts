@@ -218,6 +218,15 @@ function completeCollectMana(loc: MapLocation) {
 	Route.updateBestRoute(loc, true);
 	zones[currentZone].mineComplete();
 	setMined(loc.x, loc.y, ".");
+	if (realms[currentRealm].name === "Long Realm") {
+		routes.forEach(r => {
+			if (r.zone !== loc.zone.index ||
+				r.x !== loc.x ||
+				r.y !== loc.y
+			) return;
+			r.needsNewEstimate = true;
+		});
+	}
 	if (settings.autoRestart == AutoRestart.RestartDone && settings.grindMana) shouldReset = true;
 	getRealmComplete(realms[currentRealm]);
 }
@@ -574,6 +583,8 @@ function tickSpore(usedTime: number, loc: MapLocation, baseTime: number, clone: 
 
 function completeBarrier(loc: MapLocation) {
 	zones[currentZone].manaDrain += BARRIER_DRAIN;
+	(<HTMLElement>document.querySelector("#barrier-mult")!).style.display = "block";
+	document.querySelector("#current-barrier-mult")!.innerHTML = `x${zones[currentZone].manaDrain + 1}`;
 	setMined(loc.x, loc.y);
 }
 
@@ -591,7 +602,12 @@ function barrierDuration(){
 }
 
 function completeGame(){
-	getMessage("You Win!").display(true);
+	getMessage("You Win!").display();
+	// Reunlock VR
+	const vr = getRealm("Verdant Realm");
+	vr.maxMult = 1e308;
+	vr.completed = false;
+	vr.display();
 }
 
 enum ACTION {

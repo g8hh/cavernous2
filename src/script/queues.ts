@@ -148,10 +148,10 @@ class QueueAction {
 	}
 
 	tick(time: number) {
-		if (!this.currentAction) throw new Error("Attempted to run uninitialized action");
 		if (this.done != ActionStatus.Started){
 			return;
 		}
+		if (!this.currentAction) throw new Error("Attempted to run uninitialized action");
 		if (this.currentAction.remainingDuration == 0){
 			if ("LURD".includes(this.action!) || this.actionID == "T" || this.currentAction.action.name == "Teleport") {
 				// Someone else completed this action; this should have already been taken care of.
@@ -216,6 +216,7 @@ class QueueAction {
 	}
 
 	complete() {
+		if (this.currentAction?.remainingDuration === 0) this.currentAction = null;
 		this.done = this.actionID == "T" ? ActionStatus.NotStarted : ActionStatus.Complete;
 		if (this.done == ActionStatus.Complete) currentLoopLog.addQueueAction(this.currentClone!.id, this.actionID);
 		this.drawProgress();
@@ -701,13 +702,13 @@ function longExportQueues() {
 }
 
 function importQueues() {
-	let queueString = prompt("输入您的队列");
+	let queueString = prompt("Input your queues");
 	if (!queueString) return;
 	let tempQueues = zones[displayZone].queues.slice();
 	try {
 		let newQueues = JSON.parse(queueString);
 		if (newQueues.length > zones[displayZone].queues.length) {
-			alert("无法导入队列 - 队列过多。")
+			alert("Could not import queues - too many queues.")
 			return;
 		}
 		zones[displayZone].queues.map(e => e.clear());
@@ -716,14 +717,13 @@ function importQueues() {
 		}
 		redrawQueues();
 	} catch {
-		alert("无法导入队列");
+		alert("Could not import queues.");
 		zones[displayZone].queues = tempQueues;
 		redrawQueues();
 	}
 }
 
 function longImportQueues(queueString: string | string[][] | null) {
-	console.log(queueString)
 	if (!queueString){
 		queueString = prompt("Input your queues");
 		if (!queueString) return;

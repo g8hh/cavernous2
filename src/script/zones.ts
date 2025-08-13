@@ -171,7 +171,7 @@ class Zone {
 			});
 		}
 		this.display();
-		currentLoopLog.moveZone();
+		currentLoopLog.moveZone(`z${this.index + 1}`);
 	}
 
 	sumRoute(require: simpleStuffList, startDamage: number[], actionCount: number) {
@@ -426,6 +426,7 @@ function moveToZone(zone:string|number, complete = true) {
 		clearCursors();
 	}
 	currentZone = zone;
+	(<HTMLElement>document.querySelector("#barrier-mult")!).style.display = "none";
 	zones[zone].enterZone();
 }
 
@@ -654,11 +655,11 @@ const zones = [
 		"Zone 8",
 		[
 			"████████████████",
-			"███████■☼■██████",
-			"███§§¤■§☼§█++♥██",
-			"███G███§■§■■■■██",
-			"██+^+███■██++███",
-			"███2███¤+=██████",
+			"███████■☼■█■■■■█",
+			"███§§¤■§☼§█++♥■█",
+			"███G███§■§■■■■■█",
+			"██+^+███■██++■■█",
+			"███2███¤+=█■■■██",
 			"███2████+███████",
 			"██+++██#G#█δ3δ██",
 			"███■███♣.♣123X!█",
